@@ -1,0 +1,294 @@
+\documentclass{llncs}
+\usepackage[utf8]{inputenc}
+\usepackage[spanish,es-tabla]{babel}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{booktabs}
+\usepackage{hyperref}
+
+% Traducción de términos al español
+\renewcommand{\abstractname}{Resumen}
+\renewcommand{\refname}{Referencias}
+\renewcommand{\figurename}{Figura}
+\renewcommand{\tablename}{Tabla}
+
+% Configurar fecha en español
+\addto\captionsspanish{%
+  \def\today{\number\day\space de \ifcase\month\or
+    enero\or febrero\or marzo\or abril\or mayo\or junio\or
+    julio\or agosto\or septiembre\or octubre\or noviembre\or diciembre\fi
+    \space de \number\year}%
+}
+
+\begin{document}
+\title{Análisis del Dataset Iris mediante PCA y Validación Cruzada}
+
+\author{Alejandro Cerezo, German Torres y Daniil Nemchenko}
+
+\maketitle
+
+\begin{abstract}
+Este informe presenta un análisis exhaustivo del dataset Iris utilizando técnicas de reducción de dimensionalidad mediante Análisis de Componentes Principales (PCA) y validación cruzada estratificada con k=5 pliegues. Hemos aplicado diferentes transformaciones a los datos (estandarización y normalización) y se han evaluado distintos umbrales de varianza explicada (95\% y 80\%) para determinar el número óptimo de componentes principales, como se indicó en la guía de la práctica. Los resultados demuestran la efectividad del PCA en la reducción dimensional manteniendo la información relevante del dataset.
+\end{abstract}
+
+\section{Introducción}
+
+El dataset Iris es uno de los conjuntos de datos más conocidos en el campo del reconocimiento de patrones y aprendizaje automático \cite{fisher1936}. Fue introducido por el estadístico británico Ronald Fisher en 1936 y contiene mediciones de 150 muestras de flores iris pertenecientes a tres especies diferentes: \textit{Iris setosa}, \textit{Iris versicolor} e \textit{Iris virginica}.
+
+\subsection{Características del dataset}
+
+El dataset consta de:
+\begin{itemize}
+    \item Un total de 150 instancias, existiendo 50 de cada especie.
+    \item Las 3 clases de especies de iris.
+    \item Una distribución equilibrada: 33.3\% para cada clase.
+    \item Una serie de 4 atributos numéricos predictivos, todos ellos en centímetros:
+    \begin{itemize}
+        \item Longitud del sépalo.
+        \item Anchura del sépalo.
+        \item Longitud del pétalo.
+        \item Anchura del pétalo.
+    \end{itemize}
+\end{itemize}
+
+\subsection{Objetivos del estudio}
+
+Los objetivos principales de este análisis son evaluar el impacto de diferentes técnicas de preprocesamiento (estandarización y normalización) en la reducción dimensional mediante PCA, determinar el número óptimo de componentes principales para distintos umbrales de varianza explicada (95\% y 80\%), implementar una validación cruzada estratificada con k=5 pliegues para evaluar la robustez del modelo y generar conjuntos de datos transformados listos para ser utilizados en tareas de clasificación.
+
+\section{Metodología}
+
+\subsection{Preprocesamiento de datos}
+
+Siguiendo la guía, hemos aplicado tres enfoques diferentes al dataset original:
+
+\subsubsection{Dataset original}
+El dataset sin transformar se utiliza como línea base para comparar el efecto de las transformaciones.
+
+\subsubsection{Estandarización}
+La estandarización transforma los datos para que tengan media cero y desviación estándar unitaria. Para cada característica $x_i$, la transformación es:
+
+\begin{equation}
+z_i = \frac{x_i - \mu}{\sigma}
+\end{equation}
+
+donde $\mu$ es la media y $\sigma$ es la desviación estándar de la característica. Para ello, hemos usado la clase \texttt{StandardScaler} de la librería \texttt{sklearn.preprocessing}, como se hizo en el ejemplo proporcionado.
+
+Esta técnica es particularmente útil cuando las características tienen diferentes escalas y queremos que todas contribuyan de manera equitativa al análisis.
+
+\subsubsection{Normalización Min-Max}
+La normalización min-max escala los datos al rango [0, 1]:
+
+\begin{equation}
+x'_i = \frac{x_i - x_{min}}{x_{max} - x_{min}}
+\end{equation}
+
+Esta transformación es particularmente útil cuando se requiere que todos los valores estén en un rango específico y comparable.
+
+\subsection{Análisis de Componentes Principales (PCA)}
+
+El Análisis de Componentes Principales (PCA) es una técnica de reducción de dimensionalidad que transforma los datos originales en un nuevo sistema de coordenadas donde las nuevas variables (componentes principales) son combinaciones lineales de las variables originales y están ordenadas por la cantidad de varianza que explican.
+
+Hemos aplicado dos criterios para la selección de componentes:
+
+\begin{itemize}
+    \item \textbf{PCA 95\%}: Selecciona el número mínimo de componentes necesarios para explicar al menos el 95\% de la varianza total
+    \item \textbf{PCA 80\%}: Selecciona el número mínimo de componentes necesarios para explicar al menos el 80\% de la varianza total
+\end{itemize}
+
+\subsection{Validación cruzada estratificada}
+
+Hemos implementado una validación cruzada estratificada con k=5 pliegues. Con esta técnica dividimos el conjunto de datos en 5 particiones (folds) de igual tamaño, manteniendo la misma proporción de clases en cada partición (estratificación). En cada iteración, utilizamos 4 particiones para entrenamiento (80\% de los datos) y una para prueba (20\% de los datos). Esto permite utilizar todos los datos tanto para entrenamiento como para evaluación, reduciendo el sesgo en la estimación del rendimiento.
+
+\section{Resultados}
+
+\subsection{Transformaciones Aplicadas}
+
+Se han generado 9 conjuntos de datos diferentes a partir del dataset original:
+
+\begin{enumerate}
+    \item Original (sin transformación)
+    \item Estandarizado
+    \item Normalizado
+    \item Original + PCA 95\%
+    \item Original + PCA 80\%
+    \item Estandarizado + PCA 95\%
+    \item Estandarizado + PCA 80\%
+    \item Normalizado + PCA 95\%
+    \item Normalizado + PCA 80\%
+\end{enumerate}
+
+\subsection{Reducción de Dimensionalidad}
+
+Los resultados del análisis PCA muestran:
+
+\begin{table}[h]
+\centering
+\caption{Número de componentes principales según umbral de varianza}
+\begin{tabular}{lcc}
+\toprule
+Preprocesamiento & PCA 95\% & PCA 80\% \\
+\midrule
+Original & 2 componentes & 1 componente \\
+Estandarizado & 2 componentes & 1 componente \\
+Normalizado & 2 componentes & 1 componente \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Nos damos cuenta de que para el umbral del 95\% de varianza explicada, se requieren 2 componentes principales en todos los casos, lo que representa una reducción del 50\% en la dimensionalidad (de 4 a 2 características), mientras que para el umbral del 80\% de varianza explicada, una única componente principal es suficiente, logrando una reducción del 75\% en la dimensionalidad (de 4 a 1 característica).
+
+\subsection{Visualización de Preprocesamiento}
+
+Las figuras \ref{fig:estandarizado} y \ref{fig:normalizado} nos muestran la distribución de los datos tras aplicar estandarización y normalización respectivamente, utilizando las características de longitud y anchura del sépalo.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.7\textwidth]{images/estandarizado_scatter.png}
+\caption{Conjunto de datos estandarizado. Observamos que las tres clases de iris presentan distribuciones diferenciadas, con \textit{Iris setosa} claramente separada de las otras dos especies. Los datos estandarizados tienen media cero y desviación estándar unitaria, lo que permite una comparación equitativa entre características con diferentes escalas originales.}
+\label{fig:estandarizado}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.7\textwidth]{images/normalizado_scatter.png}
+\caption{Conjunto de datos normalizado al rango [0, 1]. La normalización min-max preserva las relaciones entre los puntos y mantiene la estructura de separabilidad entre clases. Esta transformación nos resulta particularmente útil cuando se requiere que todos los valores estén en un rango específico y comparable.}
+\label{fig:normalizado}
+\end{figure}
+
+\subsection{Análisis PCA sobre datos originales}
+
+Las figuras \ref{fig:orig_pca95_violin} a \ref{fig:orig_pca80_violin} muestran los resultados del PCA aplicado directamente sobre los datos originales (sin estandarización ni normalización previa).
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.7\textwidth]{images/original_pca95_violin.png}
+\caption{Distribución por clase tras aplicar PCA con umbral del 95\% de varianza explicada sobre datos originales. El gráfico de violín nos muestra que una única componente principal es suficiente para capturar el 95\% de la varianza. \textit{Iris setosa} presenta valores consistentemente menores en esta componente, mientras que las otras dos especies muestran mayor solapamiento.}
+\label{fig:orig_pca95_violin}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.7\textwidth]{images/original_pca95_scatter.png}
+\caption{Proyección en 2D del espacio de componentes principales (95\% varianza) para datos originales. La primera y segunda componente principal permiten una visualización clara de la separación entre clases, con \textit{Iris setosa} formando un cluster distintivo.}
+\label{fig:orig_pca95_scatter}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.7\textwidth]{images/original_pca80_violin.png}
+\caption{Distribución por clase con PCA al 80\% de varianza sobre datos originales. Con este umbral más bajo, una sola componente es suficiente, logrando la máxima reducción dimensional (de 4 a 1 característica). La separabilidad de \textit{Iris setosa} se mantiene claramente visible.}
+\label{fig:orig_pca80_violin}
+\end{figure}
+
+\subsection{Análisis PCA sobre datos estandarizados}
+
+Las Figuras \ref{fig:std_pca95_violin} a \ref{fig:std_pca80_violin} presentan el análisis PCA aplicado sobre los datos estandarizados, donde cada característica tiene media cero y desviación estándar unitaria.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.7\textwidth]{images/std_pca95_violin.png}
+\caption{Distribución por clase tras PCA (95\% varianza) sobre datos estandarizados. La estandarización previa al PCA asegura que todas las características contribuyan equitativamente al análisis, independientemente de sus escalas originales. Observamos una separación clara entre las tres especies.}
+\label{fig:std_pca95_violin}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.7\textwidth]{images/std_pca95_scatter.png}
+\caption{Espacio bidimensional de componentes principales (95\% varianza) para datos estandarizados. La estandarización mejora la visualización al dar igual peso a todas las características, resultando en una proyección más balanceada que captura mejor las diferencias sutiles entre \textit{Iris versicolor} e \textit{Iris virginica}.}
+\label{fig:std_pca95_scatter}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.7\textwidth]{images/std_pca80_violin.png}
+\caption{Distribución por clase con PCA al 80\% de varianza sobre datos estandarizados. Similar a los datos originales, una componente principal es suficiente para este umbral, manteniendo la separabilidad entre clases.}
+\label{fig:std_pca80_violin}
+\end{figure}
+
+\subsection{Análisis PCA sobre datos normalizados}
+
+Las Figuras \ref{fig:norm_pca95_violin} a \ref{fig:norm_pca80_violin} ilustran el comportamiento del PCA cuando se aplica sobre datos normalizados al rango [0, 1].
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.7\textwidth]{images/norm_pca95_violin.png}
+\caption{Distribución por clase tras PCA (95\% varianza) sobre datos normalizados. La normalización min-max previa al PCA produce resultados similares a la estandarización en términos de separabilidad entre clases, aunque con una escala diferente en el espacio de componentes principales.}
+\label{fig:norm_pca95_violin}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.7\textwidth]{images/norm_pca95_scatter.png}
+\caption{Proyección 2D del espacio PCA (95\% varianza) para datos normalizados. La estructura de separación entre clases se preserva, con \textit{Iris setosa} claramente diferenciada y las otras dos especies mostrando cierto solapamiento en el espacio reducido.}
+\label{fig:norm_pca95_scatter}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.7\textwidth]{images/norm_pca80_violin.png}
+\caption{Distribución por clase con PCA al 80\% de varianza sobre datos normalizados. Consistente con los otros métodos de preprocesamiento, una componente principal captura suficiente información para este umbral, demostrando la efectividad del PCA en la reducción dimensional del dataset Iris.}
+\label{fig:norm_pca80_violin}
+\end{figure}
+
+\subsection{Distribución de los datos}
+
+El análisis visual, a través de gráficos de violín y de dispersión, revela varios patrones relevantes. La clase \textit{Iris setosa} se distingue claramente de las otras dos especies en el espacio de componentes principales, independientemente del método de preprocesamiento aplicado. En cambio, las clases \textit{Iris versicolor} e \textit{Iris virginica} presentan cierto grado de solapamiento, aunque siguen siendo diferenciables en el espacio definido por las dos primeras componentes principales. La primera componente explica la mayor parte de la variabilidad asociada a las medidas de los pétalos, que según la literatura constituyen las variables con mayor poder discriminante. Los gráficos de violín muestran que la distribución de cada clase es relativamente homogénea, siendo \textit{Iris setosa} la que presenta menor variabilidad en la primera componente principal. Tanto la estandarización como la normalización producen resultados cualitativamente similares, aunque la estandarización suele ser más adecuada al emplearse con algoritmos sensibles a la escala, como las máquinas de vectores de soporte (SVM) o las redes neuronales.
+
+\subsection{Archivos generados}
+
+Para cada uno de los 9 conjuntos de datos y para cada una de las 5 iteraciones de validación cruzada, hemos conseguido generar archivos CSV con los conjuntos de entrenamiento y prueba:
+
+\begin{itemize}
+    \item \texttt{training\{i\}\_\{tipo\}.csv}: Conjunto de entrenamiento para la iteración i (120 muestras)
+    \item \texttt{test\{i\}\_\{tipo\}.csv}: Conjunto de prueba para la iteración i (30 muestras)
+\end{itemize}
+
+Donde \texttt{\{tipo\}} indica el tipo de transformación aplicada (original, std, norm, original\_PCA95, etc.) e \texttt{\{i\}} va de 1 a 5.
+
+En total hemos generado 90 archivos CSV (9 conjuntos $\times$ 5 iteraciones $\times$ 2 archivos por iteración).
+
+\section{Conclusiones}
+
+\subsection{Principales hallazgos}
+
+El análisis de componentes principales (PCA) demuestra ser altamente eficaz para el conjunto de datos \textit{Iris}, ya que permite reducir la dimensionalidad de cuatro a dos variables conservando aproximadamente el 95\% de la varianza total, e incluso a una sola componente manteniendo alrededor del 80\% de la información original. 
+
+En cuanto al preprocesamiento, tanto la estandarización como la normalización producen resultados comparables en términos del número de componentes principales necesarias. La elección entre una u otra técnica dependerá principalmente del algoritmo de clasificación que se emplee posteriormente.
+
+Respecto a la separabilidad de clases, la especie \textit{Iris setosa} resulta linealmente separable de las otras dos, mientras que \textit{Iris versicolor} e \textit{Iris virginica} presentan cierto solapamiento, lo cual coincide con los hallazgos reportados en la literatura sobre este conjunto de datos.
+
+Finalmente, la aplicación de validación cruzada estratificada asegura que los resultados obtenidos sean robustos y generalizables, manteniendo la proporción de clases en cada partición del conjunto de datos.
+
+
+\subsection{Aplicaciones Prácticas}
+
+Los conjuntos de datos generados están listos para ser utilizados en entrenamiento y evaluación de algoritmos de clasificación supervisada, comparación del rendimiento de modelos con diferentes niveles de reducción dimensional, análisis del trade-off entre complejidad del modelo y precisión, y estudios sobre la importancia de las características en la clasificación.
+
+\subsection{Reflexiones Finales}
+
+Este estudio demuestra la importancia del preprocesamiento y la reducción de dimensionalidad en el análisis de datos. El dataset Iris, aunque es relativamente simple, sirve como un excelente caso de estudio para entender estos conceptos fundamentales en machine learning.
+
+Además, la reducción de dimensionalidad mediante PCA no solo nos ayuda a visualizar mejor los datos y reducir el costo computacional, sino que también puede mejorar el rendimiento de los modelos al eliminar ruido y correlaciones redundantes entre variables.
+
+Por último, podemos añadir que la validación cruzada estratificada implementada asegura que los resultados obtenidos sean confiables y reproducibles, proporcionando una base sólida para futuras investigaciones y aplicaciones prácticas.
+
+\begin{thebibliography}{9}
+
+\bibitem{fisher1936}
+Fisher, R. A. (1936).
+\textit{The use of multiple measurements in taxonomic problems}.
+Annals of Eugenics, 7(2), 179-188.
+
+\bibitem{sklearn}
+Pedregosa, F., et al. (2011).
+\textit{Scikit-learn: Machine Learning in Python}.
+Journal of Machine Learning Research, 12, 2825-2830.
+
+\bibitem{pca}
+Jolliffe, I. T. (2002).
+\textit{Principal Component Analysis} (2nd ed.).
+Springer Series in Statistics.
+
+\end{thebibliography}
+
+\end{document}
