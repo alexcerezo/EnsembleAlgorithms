@@ -1,0 +1,136 @@
+#!/usr/bin/env python
+# coding: utf-8
+
+# # Evaluación de los modelos
+# 
+# Evaluamos los modelos con las diferentes métricas mencionadas en la práctica: 
+# | Métrica | Definición |
+# |---|---|
+# | F1-score (Fm) | Fm = 2 × (PR × RC) / (PR + RC) |
+# | Sensibilidad (S) | S = TP / (TP + FN) |
+# | Exactitud (Acc) | Acc = (TP + TN) / (TP + FP + FN + TN) |
+# | Especificidad (SP) | SP = TN / (FP + TN) |
+# | Recall (RC) | RC = TP / (TP + FN) |
+# | Precisión (PR) | PR = TP / (TP + FP) |
+# | Tasa de falsos negativos (FNR) | FNR = FN / (TP + FN) |
+# | Tasa de falsos positivos (FPR) | FPR = FP / (FP + TN) |
+# 
+# Para ello, usamos una función que se encarga de obtener todas las métricas excepto la curva ROC y el AUC.
+
+# In[29]:
+
+
+import pandas as pd 
+import numpy as np
+
+def get_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> pd.DataFrame:
+
+    # Cálculo de los valores de la matriz de confusión
+    TN = np.sum((y_true == 0) & (y_pred == 0))
+    TP = np.sum((y_true == 1) & (y_pred == 1))
+    FN = np.sum((y_true == 1) & (y_pred == 0))
+    FP = np.sum((y_true == 0) & (y_pred == 1))
+
+    # Sensibilidad
+    S = TP / (TP + FN)
+    # Exactitud
+    Acc = (TP + TN) / (TP + FP + FN + TN)
+    # Especificidad
+    SP = TN / (FP + TN)
+    # Recall
+    RC = TP / (TP + FN)
+    # Precisión
+    PR = TP / (TP + FP)
+    # Tasa de falsos negativos
+    FNR = FN / (TP + FN)
+    # Tasa de falsos positivos
+    FPR = FP / (FP + TN)
+    # F1-score
+    Fm = 2 * (PR * RC) / (PR + RC)
+    # Guardamos los resultados en un DataFrame
+    results = pd.DataFrame({
+        'metric': ['Sensibilidad', 'Exactitud', 'Especificidad', 'Recall', 'Precisión', 'Tasa de Falsos Negativos', 'Tasa de Falsos Positivos', 'F1-score'],
+        'value': [S, Acc, SP, RC, PR, FNR, FPR, Fm]
+    })
+
+
+    return results
+
+
+# A continuación, generamos la curva ROC y el AUC (área bajo la curva).
+
+# In[ ]:
+
+
+from sklearn.metrics import roc_curve, auc, roc_auc_score
+from sklearn.preprocessing import label_binarize
+import matplotlib.pyplot as plt
+import numpy as np
+import os
+
+def get_roc_curve(y_true: np.ndarray, y_prob: np.ndarray, name: str) -> float:
+    # Obtenemos el número de clases
+    n_classes = len(np.unique(y_true))
+
+    # Clasificación multiclase - usar estrategia One-vs-Rest
+    classes = np.unique(y_true)
+    y_true_bin = label_binarize(y_true, classes=classes)
+
+    # Calcular ROC y AUC para cada clase
+    fpr = dict()
+    tpr = dict()
+    roc_auc = dict()
+
+    for i in range(n_classes):
+        fpr[i], tpr[i], _ = roc_curve(y_true_bin[:, i], y_prob[:, i])
+        roc_auc[i] = auc(fpr[i], tpr[i])
+
+    # Calcular macro-average AUC
+    macro_roc_auc = np.mean(list(roc_auc.values()))
+
+    # Graficar curvas ROC para cada clase
+    plt.figure(figsize=(10, 8))
+    colors = ['blue', 'red', 'green', 'orange', 'purple', 'brown']
+
+    for i in range(n_classes):
+        plt.plot(fpr[i], tpr[i], color=colors[i % len(colors)], lw=2,
+            label=f'Clase {classes[i]} (AUC = {roc_auc[i]:.4f})')
+
+    plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--', 
+        label='Clasificador aleatorio')
+    plt.xlim([0.0, 1.0])
+    plt.ylim([0.0, 1.05])
+    plt.xlabel('Tasa de Falsos Positivos (FPR)')
+    plt.ylabel('Tasa de Verdaderos Positivos (TPR)')
+    plt.title(f'Curva ROC Multiclase (Macro-AUC = {macro_roc_auc:.4f})')
+    plt.legend(loc="lower right")
+    plt.grid(True)
+    plt.savefig(f'cross_validation_evaluation/{name}.png')
+    plt.show()
+    plt.close()
+
+    roc_auc = macro_roc_auc
+
+    return roc_auc
+
+
+# Por último, unimos los resultados de ambas funciones en un mismo Dataframe que se guarda en un CSV.
+
+# In[ ]:
+
+
+def evaluate_model(y_true: np.ndarray, y_pred: np.ndarray, y_prob: np.ndarray, name: str) -> pd.DataFrame:
+    metrics_df = get_metrics(y_true, y_pred)
+    roc_auc = get_roc_curve(y_true, y_prob, name)
+
+    # Añadir AUC al DataFrame de métricas
+    auc_df = pd.DataFrame({
+        'metric': ['AUC'],
+        'value': [roc_auc]
+    })
+
+    final_results = pd.concat([metrics_df, auc_df], ignore_index=True)
+    final_results.to_csv(f'cross_validation_evaluation/{name}.csv', index=False)
+
+    return final_results
+
