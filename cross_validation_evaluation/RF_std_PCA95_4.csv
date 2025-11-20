@@ -1,0 +1,10 @@
+metric,value
+Sensibilidad,1.0
+Exactitud,1.0
+Especificidad,1.0
+Recall,1.0
+Precisión,1.0
+Tasa de Falsos Negativos,0.0
+Tasa de Falsos Positivos,0.0
+F1-score,1.0
+AUC,0.9766666666666666
