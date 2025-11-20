@@ -1,6 +1,5 @@
-import nbimporter
-import train
-import eval
+from train import KNN, SVM, RF, NB, train_model
+from eval import get_metrics, get_roc_curve, evaluate_model
 
 methods = {
     "K" : KNN,
@@ -22,5 +21,5 @@ for method in methods.keys():
     for iteration in range(1, 6):
         for transform in transformations.keys():
             for value in PCA:
-                y_test, y_pred, y_prob, model_name = train.train_model(method, iteration, transform, value)
-                eval.evaluate_model(y_test, y_pred, y_prob, model_name)
+                y_test, y_pred, y_prob, model_name = train_model(method, iteration, transform, value)
+                evaluate_model(y_test, y_pred, y_prob, model_name)
