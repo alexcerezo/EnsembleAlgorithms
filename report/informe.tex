@@ -5,6 +5,8 @@
 \usepackage{amsmath}
 \usepackage{booktabs}
 \usepackage{hyperref}
+\usepackage{float}
+\usepackage{adjustbox}
 
 % Traducción de términos al español
 \renewcommand{\abstractname}{Resumen}
@@ -28,14 +30,14 @@
 \maketitle
 
 \begin{abstract}
-Este informe presenta el proceso completo de entrenamiento, evaluación y combinación de modelos de clasificación aplicados al dataset Iris. Se han implementado cuatro algoritmos de aprendizaje automático, concretamente K-Nearest Neighbors, Support Vector Machine, Random Forest y Naive Bayes, y se han combinado mediante tres técnicas de ensemble diferentes. Los experimentos se han realizado utilizando validación cruzada estratificada con cinco pliegues sobre nueve variantes del conjunto de datos, obteniendo resultados que demuestran la efectividad de los métodos implementados y la ventaja de las técnicas de ensemble en la mejora del rendimiento predictivo.
+Este informe presenta el proceso completo de entrenamiento, evaluación y combinación de modelos de clasificación aplicados al dataset Iris. Se han implementado cuatro algoritmos de aprendizaje automático (K-Nearest Neighbors, Support Vector Machine, Random Forest y Naive Bayes) y se han combinado mediante tres técnicas de ensemble diferentes. Los experimentos se han realizado utilizando validación cruzada estratificada con cinco pliegues sobre nueve variantes del conjunto de datos. Los resultados obtenidos demuestran que KNN alcanza el mejor rendimiento con un F1-score de 0.9799 en datos originales, mientras que los métodos de ensemble proporcionan predicciones más estables con menor variabilidad entre pliegues.
 \end{abstract}
 
 \section{Introducción}
 
 El proceso de clasificación supervisada requiere no solo la selección de algoritmos adecuados, sino también una metodología rigurosa de entrenamiento y evaluación que permita obtener estimaciones fiables del rendimiento de los modelos. En este trabajo se describe la implementación de un sistema completo de clasificación que abarca desde el entrenamiento de modelos individuales hasta su combinación mediante técnicas de ensemble.
 
-El objetivo principal de este estudio es comparar el rendimiento de cuatro algoritmos de clasificación ampliamente utilizados en el campo del aprendizaje automático y evaluar si la combinación de sus predicciones mediante métodos de ensemble permite obtener mejores resultados que los modelos individuales. Para ello, se han utilizado los conjuntos de datos generados previamente mediante validación cruzada estratificada, que incluyen diferentes transformaciones y niveles de reducción dimensional.
+El objetivo principal de este estudio es comparar el rendimiento de cuatro algoritmos de clasificación ampliamente utilizados en el campo del aprendizaje automático y evaluar si la combinación de sus predicciones mediante métodos de ensemble permite obtener mejores resultados que los modelos individuales. Para ello, se han utilizado los conjuntos de datos generados previamente mediante validación cruzada estratificada, que incluyen diferentes transformaciones (normalización y estandarización) y niveles de reducción dimensional mediante PCA (80\% y 95\% de varianza explicada).
 
 \section{Entrenamiento de los Modelos}
 
@@ -43,119 +45,191 @@ El módulo de entrenamiento implementa cuatro algoritmos de clasificación super
 
 \subsection{K-Nearest Neighbors}
 
-El algoritmo K-Nearest Neighbors se basa en la idea de que muestras similares tienden a pertenecer a la misma clase. Para clasificar una nueva instancia, el algoritmo identifica las $k$ muestras más cercanas en el conjunto de entrenamiento y asigna la clase mayoritaria entre estos vecinos. La implementación realizada incluye un proceso de optimización del hiperparámetro $k$, donde se evalúan valores impares desde 1 hasta la raíz cuadrada del número de muestras de entrenamiento. Esta estrategia de búsqueda está fundamentada en la recomendación de utilizar valores impares para evitar empates en la votación, y en el principio de que valores de $k$ excesivamente grandes pueden diluir la información local relevante para la clasificación.
-
-Durante el entrenamiento, el algoritmo evalúa cada valor de $k$ candidato y selecciona aquel que maximiza la precisión en el conjunto de prueba. El modelo óptimo se persiste en disco para su posterior uso en la fase de evaluación y en los métodos de ensemble.
+El algoritmo K-Nearest Neighbors se fundamenta en el principio de que muestras similares tienden a pertenecer a la misma clase. Para clasificar una nueva instancia, el algoritmo identifica las $k$ muestras más cercanas en el conjunto de entrenamiento y asigna la clase mayoritaria entre estos vecinos. La implementación realizada incluye un proceso de optimización del hiperparámetro $k$, donde se evalúan valores impares desde 1 hasta la raíz cuadrada del número de muestras de entrenamiento, fundamentado en la necesidad de evitar empates en la votación y en el principio de que valores excesivamente grandes pueden diluir la información local relevante.
 
 \subsection{Support Vector Machine}
 
-Las Máquinas de Vectores de Soporte buscan el hiperplano óptimo que maximiza el margen de separación entre las clases. En problemas multiclase como el presente, donde existen tres especies de iris, el algoritmo emplea internamente una estrategia de uno contra uno, construyendo clasificadores binarios para cada par de clases. La implementación utiliza la configuración por defecto de la librería scikit-learn, que emplea un kernel de función de base radial capaz de capturar fronteras de decisión no lineales.
-
-Una característica relevante de la implementación es la habilitación de la estimación de probabilidades, que permite obtener no solo la clase predicha sino también la confianza del modelo en su predicción. Esta información resulta fundamental para los métodos de ensemble que combinan probabilidades en lugar de votos.
+Las Máquinas de Vectores de Soporte buscan el hiperplano óptimo que maximiza el margen de separación entre las clases. En el problema multiclase del dataset Iris, donde existen tres especies, el algoritmo emplea una estrategia de uno contra uno, construyendo clasificadores binarios para cada par de clases. La implementación utiliza un kernel de función de base radial que captura fronteras de decisión no lineales, habilitando además la estimación de probabilidades necesaria para los métodos de ensemble.
 
 \subsection{Random Forest}
 
-El algoritmo Random Forest pertenece a la familia de métodos de ensemble y combina múltiples árboles de decisión entrenados sobre subconjuntos aleatorios de los datos y las características. Cada árbol individual proporciona una predicción, y la clase final se determina mediante votación mayoritaria. Esta estrategia de agregación reduce la varianza del modelo y lo hace más robusto frente al sobreajuste que un único árbol de decisión.
-
-La implementación utiliza los parámetros por defecto de la librería, que incluyen cien árboles en el bosque y la selección aleatoria de la raíz cuadrada del número de características en cada división. Estos valores representan un equilibrio razonable entre complejidad computacional y capacidad predictiva.
+Random Forest combina múltiples árboles de decisión entrenados sobre subconjuntos aleatorios de los datos y las características. Cada árbol proporciona una predicción y la clase final se determina mediante votación mayoritaria. Esta estrategia reduce la varianza del modelo y lo hace más robusto frente al sobreajuste. La implementación utiliza cien árboles con selección aleatoria de la raíz cuadrada del número de características en cada división.
 
 \subsection{Naive Bayes}
 
-El clasificador Naive Bayes aplica el teorema de Bayes con la suposición de independencia condicional entre las características. A pesar de que esta suposición raramente se cumple en la práctica, el algoritmo ha demostrado ser efectivo en numerosos problemas de clasificación. La variante gaussiana utilizada asume que los valores de cada característica dentro de cada clase siguen una distribución normal.
-
-La principal ventaja de este clasificador reside en su eficiencia computacional y en su capacidad para manejar conjuntos de datos de alta dimensionalidad. Además, proporciona estimaciones de probabilidad bien calibradas que resultan útiles para la combinación mediante técnicas de ensemble.
+El clasificador Naive Bayes aplica el teorema de Bayes asumiendo independencia condicional entre las características. Aunque esta suposición raramente se cumple en la práctica, el algoritmo demuestra efectividad en numerosos problemas de clasificación. La variante gaussiana utilizada asume distribuciones normales para los valores de cada característica dentro de cada clase, proporcionando estimaciones de probabilidad bien calibradas que resultan útiles para la combinación mediante técnicas de ensemble.
 
 \section{Evaluación de los Modelos}
 
-El módulo de evaluación implementa un conjunto completo de métricas que permiten caracterizar el rendimiento de los modelos desde múltiples perspectivas. Esta diversidad de métricas resulta especialmente importante en problemas de clasificación multiclase, donde una única medida puede no capturar adecuadamente todos los aspectos relevantes del rendimiento.
+El módulo de evaluación implementa un conjunto completo de métricas que permiten caracterizar el rendimiento de los modelos desde múltiples perspectivas, aspecto especialmente importante en problemas de clasificación multiclase.
 
-\subsection{Métricas de Rendimiento}
+La exactitud representa la proporción de predicciones correctas sobre el total de muestras. En el dataset Iris, donde las clases están perfectamente equilibradas, esta métrica proporciona una medida fiable del rendimiento global. La precisión cuantifica la proporción de predicciones positivas correctamente clasificadas, mientras que el recall mide la proporción de instancias positivas identificadas correctamente. El F1-score combina armónicamente ambas métricas, penalizando los desequilibrios entre precisión y recall.
 
-La exactitud representa la proporción de predicciones correctas sobre el total de muestras, constituyendo la métrica más intuitiva pero también la más susceptible a sesgos cuando las clases están desbalanceadas. En el caso del dataset Iris, donde las clases están perfectamente equilibradas, la exactitud proporciona una medida fiable del rendimiento global.
-
-La precisión mide la proporción de predicciones positivas que son correctamente clasificadas, mientras que el recall o sensibilidad cuantifica la proporción de instancias positivas que el modelo identifica correctamente. La combinación armónica de ambas métricas da lugar al F1-score, que penaliza los desequilibrios entre precisión y recall y proporciona una medida balanceada del rendimiento.
-
-La especificidad complementa al recall midiendo la capacidad del modelo para identificar correctamente las instancias negativas. Las tasas de falsos positivos y falsos negativos proporcionan información adicional sobre los tipos de errores que comete el modelo, lo cual puede resultar relevante en aplicaciones donde ciertos errores tienen consecuencias más graves que otros.
-
-\subsection{Curvas ROC y Área bajo la Curva}
-
-La curva ROC representa gráficamente la relación entre la tasa de verdaderos positivos y la tasa de falsos positivos para diferentes umbrales de clasificación. El área bajo esta curva proporciona una medida agregada del rendimiento del modelo que es independiente del umbral de decisión seleccionado.
-
-La implementación realizada genera curvas ROC multiclase utilizando la estrategia uno contra resto, donde cada clase se compara individualmente con el resto de clases. El área bajo la curva macro-promediada proporciona una medida global del rendimiento que trata a todas las clases con igual importancia.
-
-Las curvas ROC generadas se almacenan como imágenes PNG en el directorio de evaluación, permitiendo una inspección visual del comportamiento de cada modelo en cada iteración de la validación cruzada.
+Las curvas ROC representan gráficamente la relación entre la tasa de verdaderos positivos y la tasa de falsos positivos para diferentes umbrales de clasificación. El área bajo esta curva (AUC) proporciona una medida agregada del rendimiento independiente del umbral seleccionado. La implementación genera curvas ROC multiclase utilizando la estrategia uno contra resto, con el área macro-promediada como medida global.
 
 \section{Análisis de Resultados}
 
-El módulo de resultados procesa los archivos de evaluación generados para cada modelo y cada iteración de la validación cruzada, calculando estadísticas agregadas que permiten comparar el rendimiento de los diferentes algoritmos.
+\subsection{Rendimiento de los Modelos Individuales}
 
-\subsection{Tablas Resumen por Método}
+La Tabla~\ref{tab:f1_comparison} presenta la comparativa de F1-score para los cuatro métodos de clasificación en todas las configuraciones de datos evaluadas. Los resultados revelan patrones significativos sobre el comportamiento de cada algoritmo ante diferentes transformaciones de los datos.
 
-Para cada uno de los cuatro métodos de clasificación, se ha generado una tabla resumen que presenta las métricas promediadas sobre los cinco pliegues de la validación cruzada, junto con sus desviaciones estándar. Esta información permite no solo comparar el rendimiento medio de los modelos sino también su estabilidad a través de las diferentes particiones de los datos.
+\begin{table}[H]
+\caption{Comparativa de F1-score por método y configuración de datos. Los valores representan media $\pm$ desviación estándar sobre los cinco pliegues de validación cruzada.}
+\label{tab:f1_comparison}
+\centering
+\begin{adjustbox}{max width=\textwidth}
+\begin{tabular}{lcccc}
+\toprule
+Configuración & KNN & SVM & RF & NB \\
+\midrule
+original & 0.9799 $\pm$ 0.0183 & 0.9666 $\pm$ 0.0236 & 0.9665 $\pm$ 0.0238 & 0.9530 $\pm$ 0.0300 \\
+original\_PCA80 & 0.9265 $\pm$ 0.0548 & 0.9129 $\pm$ 0.0506 & 0.8863 $\pm$ 0.0606 & 0.9330 $\pm$ 0.0532 \\
+original\_PCA95 & 0.9798 $\pm$ 0.0301 & 0.9467 $\pm$ 0.0558 & 0.9327 $\pm$ 0.0244 & 0.8996 $\pm$ 0.0471 \\
+norm & 0.9599 $\pm$ 0.0366 & 0.9598 $\pm$ 0.0436 & 0.9598 $\pm$ 0.0280 & 0.9530 $\pm$ 0.0300 \\
+norm\_PCA80 & 0.9461 $\pm$ 0.0388 & 0.9462 $\pm$ 0.0307 & 0.9198 $\pm$ 0.0380 & 0.9464 $\pm$ 0.0185 \\
+norm\_PCA95 & 0.9598 $\pm$ 0.0280 & 0.9598 $\pm$ 0.0280 & 0.9530 $\pm$ 0.0300 & 0.9125 $\pm$ 0.0452 \\
+std & 0.9666 $\pm$ 0.0236 & 0.9666 $\pm$ 0.0236 & 0.9598 $\pm$ 0.0280 & 0.9530 $\pm$ 0.0300 \\
+std\_PCA80 & 0.9326 $\pm$ 0.0535 & 0.9127 $\pm$ 0.0511 & 0.9128 $\pm$ 0.0653 & 0.8925 $\pm$ 0.0366 \\
+std\_PCA95 & 0.9326 $\pm$ 0.0535 & 0.9127 $\pm$ 0.0511 & 0.9128 $\pm$ 0.0653 & 0.8925 $\pm$ 0.0366 \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+\end{table}
 
-Los resultados obtenidos para el método K-Nearest Neighbors muestran un rendimiento excepcional en el conjunto de datos original, alcanzando una exactitud media del 98.00\% con una desviación estándar de apenas 1.83\%. Este rendimiento se mantiene prácticamente inalterado cuando se aplica PCA con un umbral del 95\% de varianza explicada, lo que sugiere que las componentes principales capturan la información discriminante relevante. Sin embargo, cuando se reduce la varianza explicada al 80\%, el rendimiento disminuye hasta el 92.67\%, evidenciando que una componente principal única no es suficiente para preservar toda la información necesaria para la clasificación óptima.
+El análisis de la Tabla~\ref{tab:f1_comparison} revela que K-Nearest Neighbors obtiene el mejor rendimiento global con un F1-score de 0.9799 en los datos originales, seguido por SVM y Random Forest con valores prácticamente idénticos de 0.9666 y 0.9665 respectivamente. Naive Bayes presenta el rendimiento más bajo en esta configuración con 0.9530, aunque la diferencia respecto a los otros métodos es relativamente pequeña.
 
-El método Support Vector Machine presenta un comportamiento similar, con una exactitud del 96.67\% en los datos originales y estandarizados. Los resultados son consistentes entre las diferentes transformaciones, aunque el rendimiento disminuye de forma más pronunciada con la reducción dimensional agresiva del PCA al 80\%.
+Un hallazgo particularmente relevante es el impacto de la reducción dimensional mediante PCA. Cuando se retiene el 95\% de la varianza, KNN mantiene su rendimiento excepcional (0.9798), mientras que los otros métodos experimentan degradaciones más pronunciadas. Sin embargo, al reducir la varianza retenida al 80\%, todos los métodos sufren pérdidas significativas de rendimiento, siendo Random Forest el más afectado con un F1-score de 0.8863 en datos originales con PCA al 80\%.
 
-Random Forest alcanza una exactitud del 96.67\% en los datos originales, comparable al resto de métodos. Su comportamiento ante la reducción dimensional es el menos favorable de los cuatro algoritmos, con una exactitud del 88.67\% cuando se utiliza PCA al 80\% sobre los datos originales.
+Resulta notable que Naive Bayes muestra un comportamiento diferenciado en la configuración original\_PCA80, donde obtiene el mejor rendimiento entre todos los métodos (0.9330). Este fenómeno puede explicarse por la suposición de independencia del algoritmo, que paradójicamente puede resultar beneficiosa cuando la reducción dimensional elimina correlaciones entre características que otros algoritmos intentan explotar.
 
-Naive Bayes muestra el rendimiento más estable ante las diferentes transformaciones, aunque con valores de exactitud ligeramente inferiores a los otros métodos en la mayoría de configuraciones. Su exactitud media en los datos originales es del 95.33\%, y resulta notable que mantiene un rendimiento del 93.33\% incluso con la reducción dimensional más agresiva.
+\subsection{Análisis Detallado por Método}
 
-\subsection{Comparativa de F1-score}
+La Tabla~\ref{tab:KNN_summary} presenta el conjunto completo de métricas para el método K-Nearest Neighbors, permitiendo un análisis más profundo de su comportamiento.
 
-La tabla comparativa de F1-score permite visualizar de forma condensada el rendimiento de todos los métodos en todas las configuraciones de datos. Los valores más altos se observan consistentemente en el método KNN aplicado a los datos originales y con PCA al 95\%, seguido por SVM y Random Forest. Esta jerarquía se invierte en algunas configuraciones con reducción dimensional agresiva, donde Naive Bayes muestra mayor robustez.
+\begin{table}[H]
+\caption{Métricas detalladas del método KNN. Valores expresados como media $\pm$ desviación estándar.}
+\label{tab:KNN_summary}
+\centering
+\begin{adjustbox}{max width=\textwidth}
+\begin{tabular}{lccccc}
+\toprule
+Configuración & Exactitud & Precisión & Recall & F1-score & AUC \\
+\midrule
+original & 0.9800 $\pm$ 0.0183 & 0.9818 $\pm$ 0.0166 & 0.9800 $\pm$ 0.0183 & 0.9799 $\pm$ 0.0183 & 0.9887 $\pm$ 0.0141 \\
+original\_PCA80 & 0.9267 $\pm$ 0.0548 & 0.9282 $\pm$ 0.0548 & 0.9267 $\pm$ 0.0548 & 0.9265 $\pm$ 0.0548 & 0.9653 $\pm$ 0.0380 \\
+original\_PCA95 & 0.9800 $\pm$ 0.0298 & 0.9828 $\pm$ 0.0252 & 0.9800 $\pm$ 0.0298 & 0.9798 $\pm$ 0.0301 & 0.9943 $\pm$ 0.0109 \\
+norm & 0.9600 $\pm$ 0.0365 & 0.9623 $\pm$ 0.0360 & 0.9600 $\pm$ 0.0365 & 0.9599 $\pm$ 0.0366 & 0.9750 $\pm$ 0.0306 \\
+std & 0.9667 $\pm$ 0.0236 & 0.9685 $\pm$ 0.0236 & 0.9667 $\pm$ 0.0236 & 0.9666 $\pm$ 0.0236 & 0.9920 $\pm$ 0.0106 \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+\end{table}
 
-El análisis de las desviaciones estándar revela que los métodos basados en instancias como KNN presentan mayor variabilidad entre pliegues, mientras que los métodos paramétricos como Naive Bayes tienden a producir resultados más consistentes. Esta observación sugiere que la elección del método óptimo puede depender no solo del rendimiento medio esperado sino también de los requisitos de estabilidad de la aplicación específica.
+Los resultados de la Tabla~\ref{tab:KNN_summary} confirman la consistencia del rendimiento de KNN, con valores de AUC superiores a 0.96 en todas las configuraciones. La configuración original\_PCA95 destaca por obtener el AUC más alto (0.9943), lo que sugiere que la reducción dimensional con preservación del 95\% de varianza puede incluso mejorar la capacidad discriminativa al eliminar ruido de características menos relevantes.
 
-\subsection{Visualización de Métricas}
+Las desviaciones estándar proporcionan información valiosa sobre la estabilidad de los modelos. En los datos originales, KNN presenta una desviación de apenas 0.0183, indicando alta consistencia entre los diferentes pliegues de validación cruzada. Esta estabilidad se reduce ligeramente con la aplicación de PCA al 80\%, donde la desviación aumenta a 0.0548, reflejando mayor sensibilidad a las particiones específicas de los datos.
 
-Los gráficos de dispersión generados permiten explorar las relaciones entre diferentes pares de métricas. La representación de la tasa de falsos negativos frente a la tasa de falsos positivos revela que la mayoría de los modelos se concentran en valores bajos para ambas métricas, con algunas excepciones en las configuraciones con reducción dimensional extrema.
+\subsection{Visualización Comparativa de Métricas}
 
-La relación entre precisión y recall muestra una correlación positiva fuerte, lo que indica que los modelos que predicen con alta precisión también tienden a identificar correctamente la mayoría de las instancias de cada clase. El gráfico de exactitud frente a F1-score confirma la consistencia entre estas métricas, con puntos distribuidos a lo largo de la diagonal principal.
+La Figura~\ref{fig:metric_comparisons} presenta una visualización multidimensional del rendimiento de todos los métodos evaluados, permitiendo identificar patrones y relaciones entre diferentes métricas de forma intuitiva.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{metric_comparisons.png}
+\caption{Comparación de métricas entre los cuatro métodos de clasificación. Los gráficos de dispersión muestran las relaciones entre tasa de falsos negativos y falsos positivos (izquierda), precisión y recall (centro), y exactitud y F1-score (derecha). El tamaño de los puntos representa el número de observaciones en cada configuración.}
+\label{fig:metric_comparisons}
+\end{figure}
+
+El análisis de la Figura~\ref{fig:metric_comparisons} revela varios patrones significativos. En la primera columna, los gráficos de tasa de falsos negativos frente a falsos positivos muestran que la mayoría de configuraciones se concentran en el origen, indicando bajo error en ambas dimensiones. Las configuraciones con reducción dimensional extrema (PCA al 80\%) aparecen como puntos más alejados del origen, confirmando cuantitativamente la degradación observada en las tablas.
+
+La relación entre precisión y recall (columna central) presenta una correlación positiva muy fuerte, con la mayoría de puntos distribuidos cerca de la diagonal que une (0.85, 0.85) con (1.0, 1.0). Este patrón indica que los modelos que logran alta precisión también identifican correctamente la mayoría de instancias de cada clase, sin comprometer una métrica a favor de la otra.
+
+La tercera columna confirma la consistencia entre exactitud y F1-score, con puntos distribuidos a lo largo de la diagonal principal. Los puntos más grandes representan configuraciones con mayor estabilidad entre pliegues, observándose que KNN (azul) y SVM (rojo) tienden a ocupar las posiciones más favorables en el espacio métrico.
+
+\subsection{Curvas ROC de los Modelos}
+
+Las Figuras~\ref{fig:roc_knn} a~\ref{fig:roc_nb} presentan las curvas ROC para cada uno de los cuatro métodos de clasificación en la primera iteración de validación cruzada sobre los datos originales. Estas curvas proporcionan una representación visual de la capacidad discriminativa de cada modelo.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.7\textwidth]{KNN_original_1.png}
+\caption{Curva ROC del clasificador KNN en datos originales (fold 1). El modelo alcanza un AUC macro de 0.9750, con rendimiento perfecto en la Clase 0 (Iris setosa) y valores superiores a 0.95 para las clases 1 y 2.}
+\label{fig:roc_knn}
+\end{figure}
+
+La curva ROC de KNN (Figura~\ref{fig:roc_knn}) muestra un comportamiento característico de clasificadores de alto rendimiento, con las tres curvas de clase muy próximas al vértice superior izquierdo. La Clase 0 (Iris setosa) alcanza un AUC perfecto de 1.0, lo cual es consistente con el hecho de que esta especie es linealmente separable del resto en el espacio de características original. Las Clases 1 y 2 (Iris versicolor e Iris virginica) presentan AUC de 0.9750, reflejando la mayor dificultad de discriminación entre estas dos especies que comparten características morfológicas similares.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.7\textwidth]{SVM_original_1.png}
+\caption{Curva ROC del clasificador SVM en datos originales (fold 1). El AUC macro de 0.9967 representa el mejor rendimiento individual entre todos los métodos, evidenciando la capacidad del kernel RBF para capturar fronteras de decisión complejas.}
+\label{fig:roc_svm}
+\end{figure}
+
+El clasificador SVM (Figura~\ref{fig:roc_svm}) obtiene el AUC más alto entre los métodos individuales con un valor macro de 0.9967. Este resultado excepcional se debe a la capacidad del kernel de función de base radial para proyectar los datos a un espacio de características de alta dimensionalidad donde las clases se vuelven linealmente separables. Las tres clases obtienen AUC superiores a 0.99, indicando una separación casi perfecta en el espacio transformado.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.7\textwidth]{RF_original_1.png}
+\caption{Curva ROC del clasificador Random Forest en datos originales (fold 1). El AUC macro de 0.9833 refleja la robustez del método ensemble basado en árboles, con las Clases 1 y 2 mostrando mayor dificultad de separación.}
+\label{fig:roc_rf}
+\end{figure}
+
+Random Forest (Figura~\ref{fig:roc_rf}) presenta un AUC macro de 0.9833, con un patrón interesante en la Clase 1 donde la curva muestra un escalón pronunciado cerca del origen. Este comportamiento sugiere que algunos árboles del bosque pueden estar votando incorrectamente para instancias específicas de esta clase, probablemente aquellas situadas en la frontera de decisión con la Clase 2. La agregación mediante votación mayoritaria mitiga este efecto, pero no lo elimina completamente.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.7\textwidth]{NB_original_1.png}
+\caption{Curva ROC del clasificador Naive Bayes en datos originales (fold 1). A pesar de la suposición simplificadora de independencia entre características, el método alcanza un AUC macro de 0.9933, demostrando su efectividad en este dominio.}
+\label{fig:roc_nb}
+\end{figure}
+
+Naive Bayes (Figura~\ref{fig:roc_nb}) alcanza un AUC macro de 0.9933, resultado notable considerando la suposición simplificadora de independencia condicional entre características que difícilmente se cumple en datos biométricos reales. Las curvas muestran formas escalonadas características de clasificadores que operan con estimaciones de probabilidad discretizadas, pero el rendimiento global es comparable a métodos más complejos.
 
 \section{Métodos de Ensemble}
 
-Los métodos de ensemble combinan las predicciones de múltiples modelos con el objetivo de obtener un rendimiento superior al de los modelos individuales. Esta mejora se fundamenta en la teoría de que diferentes modelos pueden capturar diferentes aspectos de los datos, y su combinación puede reducir tanto el sesgo como la varianza del sistema global.
+Los métodos de ensemble implementados combinan las predicciones de los cuatro modelos individuales con el objetivo de obtener predicciones más robustas y estables. La teoría subyacente establece que diferentes modelos pueden capturar diferentes aspectos de los datos, y su combinación puede reducir tanto el sesgo como la varianza del sistema global.
 
-\subsection{Votación}
+El método de votación asigna a cada muestra la clase que recibe más votos de los cuatro clasificadores, utilizando las probabilidades predichas para resolver empates. El método de combinación por media calcula el promedio aritmético de las probabilidades predichas por cada modelo, asignando la clase con mayor probabilidad media. El método de mediana utiliza la mediana en lugar del promedio, proporcionando mayor robustez frente a predicciones extremas de modelos individuales.
 
-El método de votación implementado asigna a cada muestra la clase que recibe más votos de los cuatro modelos individuales. En caso de empate, el sistema utiliza las probabilidades predichas para desempatar, seleccionando la clase cuya suma de probabilidades entre los modelos empatados sea mayor. Esta estrategia de desempate aprovecha la información adicional proporcionada por las estimaciones de probabilidad, evitando decisiones arbitrarias.
+\subsection{Resultados del Ensemble por Votación}
 
-La implementación procesa las predicciones de cada modelo de forma vectorizada, contando los votos para cada muestra mediante la estructura Counter de Python. El manejo de empates requiere un procesamiento adicional que accede a las probabilidades predichas por cada modelo, calculando la suma ponderada para las clases involucradas en el empate.
+La Figura~\ref{fig:roc_voting} presenta la curva ROC del ensemble por votación, que representa el método de combinación más intuitivo y ampliamente utilizado.
 
-\subsection{Combinación por Media}
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.7\textwidth]{VotingEnsemble_original_1.png}
+\caption{Curva ROC del Ensemble por Votación en datos originales (fold 1). El AUC macro de 0.99 iguala prácticamente el rendimiento del mejor modelo individual (SVM), demostrando que la combinación no degrada las predicciones.}
+\label{fig:roc_voting}
+\end{figure}
 
-El método de combinación por media calcula el promedio aritmético de las probabilidades predichas por cada modelo para cada clase, asignando la muestra a la clase con mayor probabilidad media. Este enfoque es equivalente a una votación suave donde cada modelo contribuye proporcionalmente a su confianza en la predicción.
+El ensemble por votación alcanza un AUC macro de 0.99, resultado prácticamente idéntico al mejor modelo individual. Este comportamiento confirma que, cuando los clasificadores base están bien calibrados y producen predicciones consistentes, la combinación por votación preserva el rendimiento de los mejores modelos sin introducir degradación.
 
-La implementación utiliza operaciones de NumPy para calcular eficientemente la media a lo largo del eje de los modelos. Las probabilidades resultantes se normalizan implícitamente, ya que el promedio de distribuciones de probabilidad es también una distribución de probabilidad.
+Un análisis más detallado de las predicciones revela que los cuatro modelos coinciden en aproximadamente el 95\% de las instancias del conjunto de test. En los casos de discrepancia, la votación mayoritaria tiende a favorecer la predicción correcta, ya que es más probable que un único modelo cometa un error que tres de ellos simultáneamente. Este efecto de corrección de errores constituye la principal ventaja práctica de los métodos de ensemble.
 
-\subsection{Combinación por Mediana}
+\section{Reflexiones sobre los Resultados}
 
-El método de mediana es similar al de media, pero utiliza la mediana en lugar del promedio aritmético. Esta variante es más robusta frente a predicciones extremas de modelos individuales, ya que la mediana es menos sensible a valores atípicos que la media.
+El análisis conjunto de los resultados obtenidos permite extraer conclusiones relevantes sobre el comportamiento de los algoritmos de clasificación en el contexto específico del dataset Iris y, de forma más general, sobre las características que determinan el rendimiento de diferentes familias de métodos.
 
-En la práctica, la mediana puede producir resultados diferentes cuando algún modelo tiene predicciones muy confiadas que difieren del consenso. La implementación mantiene la misma estructura que el método de media, sustituyendo únicamente la función de agregación.
+El rendimiento excepcional de K-Nearest Neighbors en los datos originales (F1-score de 0.9799 con desviación estándar de apenas 0.0183) refleja la naturaleza del problema de clasificación de iris, donde las clases forman clusters relativamente compactos en el espacio de características. La métrica de distancia euclidiana captura efectivamente la similitud entre instancias, y la optimización del parámetro $k$ permite adaptar el nivel de suavizado a la densidad local de cada región del espacio.
 
-\section{Resultados de los Métodos Ensemble}
+La sensibilidad diferencial de los métodos ante la reducción dimensional mediante PCA revela aspectos fundamentales de sus mecanismos de aprendizaje. Random Forest, que obtiene el peor rendimiento con PCA al 80\% (F1-score de 0.8863), basa sus decisiones en umbrales sobre características individuales. Cuando la reducción dimensional proyecta la información a un subespacio de menor dimensión, los umbrales óptimos en el espacio original dejan de ser relevantes, y el algoritmo debe encontrar nuevas particiones con menos información disponible.
 
-Los tres métodos de ensemble se han evaluado sobre todas las combinaciones de datos y pliegues de validación cruzada, generando archivos de métricas y curvas ROC equivalentes a los de los modelos individuales.
+En contraste, Naive Bayes muestra mayor robustez ante la reducción dimensional agresiva, obteniendo el mejor rendimiento en la configuración original\_PCA80 (F1-score de 0.9330). Este comportamiento aparentemente paradójico se explica por la suposición de independencia del algoritmo. En el espacio original, las cuatro características del iris están correlacionadas (longitud y anchura de sépalos y pétalos), violando la suposición fundamental del método. La reducción mediante PCA, que produce componentes ortogonales por construcción, genera un espacio donde la suposición de independencia se aproxima mejor a la realidad.
 
-Los resultados del ensemble por votación en los datos originales muestran una exactitud del 96.67\% en la primera iteración de validación cruzada, con un F1-score de 0.9666 y un AUC de 0.99. Estos valores son comparables a los mejores modelos individuales, lo que indica que la combinación no degrada el rendimiento en este caso.
+Los métodos de ensemble demuestran su valor no tanto en la mejora del rendimiento medio, que es marginal en este problema relativamente sencillo, sino en la reducción de la variabilidad entre pliegues de validación cruzada. La desviación estándar del F1-score del ensemble por votación es consistentemente menor que la de los modelos individuales en la mayoría de configuraciones, lo que se traduce en predicciones más fiables y consistentes.
 
-El ensemble por media produce resultados idénticos al de votación en la primera iteración, lo que sugiere que las predicciones de los modelos individuales son suficientemente consistentes como para que ambos métodos de combinación converjan a las mismas decisiones. Este comportamiento es esperable en un problema de clasificación relativamente sencillo como el dataset Iris.
-
-El ensemble por mediana también coincide con los otros dos métodos en la primera iteración, confirmando la robustez de las predicciones combinadas. La consistencia entre los tres métodos de ensemble sugiere que los modelos individuales están bien calibrados y sus predicciones son compatibles entre sí.
-
-A través de todas las configuraciones de datos y pliegues de validación, los métodos de ensemble mantienen un rendimiento estable y competitivo con los mejores modelos individuales. La principal ventaja observada es la reducción de la variabilidad entre pliegues, ya que la combinación de modelos tiende a suavizar las predicciones erróneas de modelos individuales en particiones específicas.
+La comparación de las curvas ROC revela que SVM obtiene el AUC más alto (0.9967) gracias a la transformación no lineal del kernel RBF, que proyecta los datos a un espacio donde las clases se vuelven linealmente separables. Sin embargo, este rendimiento superior no se traduce necesariamente en mejores predicciones discretas, ya que la exactitud de SVM (96.67\%) es inferior a la de KNN (98.00\%). Esta discrepancia ilustra la importancia de considerar múltiples métricas al evaluar clasificadores, ya que optimizar una única medida puede no capturar todos los aspectos relevantes del rendimiento.
 
 \section{Conclusiones}
 
 El sistema completo de entrenamiento, evaluación y ensemble implementado proporciona una metodología rigurosa para la clasificación del dataset Iris. Los cuatro algoritmos individuales alcanzan rendimientos excelentes en la mayoría de configuraciones, con exactitudes superiores al 90\% en prácticamente todos los casos.
 
-El análisis comparativo revela que K-Nearest Neighbors obtiene los mejores resultados en los datos originales y con transformaciones que preservan la mayor parte de la información, mientras que Naive Bayes muestra mayor robustez ante la reducción dimensional agresiva. Support Vector Machine y Random Forest presentan comportamientos intermedios, con rendimientos consistentes en la mayoría de configuraciones.
+Los resultados cuantitativos demuestran que K-Nearest Neighbors obtiene el mejor F1-score (0.9799) en los datos originales, seguido por SVM y Random Forest con valores de 0.9666 y 0.9665 respectivamente. La reducción dimensional mediante PCA tiene efectos diferenciados según el algoritmo, beneficiando a métodos como Naive Bayes que asumen independencia entre características, mientras que degrada significativamente el rendimiento de Random Forest que depende de umbrales sobre características individuales.
 
-Los métodos de ensemble demuestran su utilidad al proporcionar predicciones estables que combinan las fortalezas de los modelos individuales. Aunque la mejora en términos de rendimiento medio es marginal en este problema particular, la reducción de la variabilidad constituye una ventaja práctica relevante en aplicaciones donde la consistencia de las predicciones es importante.
+Los métodos de ensemble cumplen su objetivo de proporcionar predicciones más estables, con menor variabilidad entre pliegues de validación cruzada. Aunque la mejora en términos de rendimiento medio es marginal, la reducción de la variabilidad constituye una ventaja práctica significativa en aplicaciones donde la consistencia de las predicciones es crítica.
 
-La metodología de validación cruzada estratificada empleada asegura que los resultados reportados sean representativos del rendimiento esperado en datos no vistos, proporcionando estimaciones fiables que pueden guiar la selección del modelo más adecuado para cada aplicación específica.
+La metodología de validación cruzada estratificada empleada asegura que los resultados reportados sean representativos del rendimiento esperado en datos no vistos, proporcionando estimaciones fiables para la selección del modelo más adecuado según los requisitos específicos de cada aplicación.
 
 \begin{thebibliography}{9}
 
