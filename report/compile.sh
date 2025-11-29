@@ -6,6 +6,9 @@ echo "Compilando informe LaTeX con LNCS"
 echo "==================================="
 echo ""
 
+# Cambiar al directorio del script
+cd "$(dirname "$0")"
+
 # Verificar que pdflatex está instalado
 if ! command -v pdflatex &> /dev/null; then
     echo "Error: pdflatex no está instalado"
