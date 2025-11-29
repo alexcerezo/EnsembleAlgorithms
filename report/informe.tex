@@ -21,273 +21,163 @@
 }
 
 \begin{document}
-\title{Análisis del Dataset Iris mediante PCA y Validación Cruzada}
+\title{Entrenamiento, Evaluación y Métodos Ensemble para Clasificación del Dataset Iris}
 
 \author{Alejandro Cerezo, German Torres y Daniil Nemchenko}
 
 \maketitle
 
 \begin{abstract}
-Este informe presenta un análisis exhaustivo del dataset Iris utilizando técnicas de reducción de dimensionalidad mediante Análisis de Componentes Principales (PCA) y validación cruzada estratificada con k=5 pliegues. Hemos aplicado diferentes transformaciones a los datos (estandarización y normalización) y se han evaluado distintos umbrales de varianza explicada (95\% y 80\%) para determinar el número óptimo de componentes principales, como se indicó en la guía de la práctica. Los resultados demuestran la efectividad del PCA en la reducción dimensional manteniendo la información relevante del dataset.
+Este informe presenta el proceso completo de entrenamiento, evaluación y combinación de modelos de clasificación aplicados al dataset Iris. Se han implementado cuatro algoritmos de aprendizaje automático, concretamente K-Nearest Neighbors, Support Vector Machine, Random Forest y Naive Bayes, y se han combinado mediante tres técnicas de ensemble diferentes. Los experimentos se han realizado utilizando validación cruzada estratificada con cinco pliegues sobre nueve variantes del conjunto de datos, obteniendo resultados que demuestran la efectividad de los métodos implementados y la ventaja de las técnicas de ensemble en la mejora del rendimiento predictivo.
 \end{abstract}
 
 \section{Introducción}
 
-El dataset Iris es uno de los conjuntos de datos más conocidos en el campo del reconocimiento de patrones y aprendizaje automático \cite{fisher1936}. Fue introducido por el estadístico británico Ronald Fisher en 1936 y contiene mediciones de 150 muestras de flores iris pertenecientes a tres especies diferentes: \textit{Iris setosa}, \textit{Iris versicolor} e \textit{Iris virginica}.
+El proceso de clasificación supervisada requiere no solo la selección de algoritmos adecuados, sino también una metodología rigurosa de entrenamiento y evaluación que permita obtener estimaciones fiables del rendimiento de los modelos. En este trabajo se describe la implementación de un sistema completo de clasificación que abarca desde el entrenamiento de modelos individuales hasta su combinación mediante técnicas de ensemble.
 
-\subsection{Características del dataset}
+El objetivo principal de este estudio es comparar el rendimiento de cuatro algoritmos de clasificación ampliamente utilizados en el campo del aprendizaje automático y evaluar si la combinación de sus predicciones mediante métodos de ensemble permite obtener mejores resultados que los modelos individuales. Para ello, se han utilizado los conjuntos de datos generados previamente mediante validación cruzada estratificada, que incluyen diferentes transformaciones y niveles de reducción dimensional.
 
-El dataset consta de:
-\begin{itemize}
-    \item Un total de 150 instancias, existiendo 50 de cada especie.
-    \item Las 3 clases de especies de iris.
-    \item Una distribución equilibrada: 33.3\% para cada clase.
-    \item Una serie de 4 atributos numéricos predictivos, todos ellos en centímetros:
-    \begin{itemize}
-        \item Longitud del sépalo.
-        \item Anchura del sépalo.
-        \item Longitud del pétalo.
-        \item Anchura del pétalo.
-    \end{itemize}
-\end{itemize}
+\section{Entrenamiento de los Modelos}
 
-\subsection{Objetivos del estudio}
+El módulo de entrenamiento implementa cuatro algoritmos de clasificación supervisada, cada uno con características y supuestos diferentes que los hacen adecuados para distintos tipos de problemas.
 
-Los objetivos principales de este análisis son evaluar el impacto de diferentes técnicas de preprocesamiento (estandarización y normalización) en la reducción dimensional mediante PCA, determinar el número óptimo de componentes principales para distintos umbrales de varianza explicada (95\% y 80\%), implementar una validación cruzada estratificada con k=5 pliegues para evaluar la robustez del modelo y generar conjuntos de datos transformados listos para ser utilizados en tareas de clasificación.
+\subsection{K-Nearest Neighbors}
 
-\section{Metodología}
+El algoritmo K-Nearest Neighbors se basa en la idea de que muestras similares tienden a pertenecer a la misma clase. Para clasificar una nueva instancia, el algoritmo identifica las $k$ muestras más cercanas en el conjunto de entrenamiento y asigna la clase mayoritaria entre estos vecinos. La implementación realizada incluye un proceso de optimización del hiperparámetro $k$, donde se evalúan valores impares desde 1 hasta la raíz cuadrada del número de muestras de entrenamiento. Esta estrategia de búsqueda está fundamentada en la recomendación de utilizar valores impares para evitar empates en la votación, y en el principio de que valores de $k$ excesivamente grandes pueden diluir la información local relevante para la clasificación.
 
-\subsection{Preprocesamiento de datos}
+Durante el entrenamiento, el algoritmo evalúa cada valor de $k$ candidato y selecciona aquel que maximiza la precisión en el conjunto de prueba. El modelo óptimo se persiste en disco para su posterior uso en la fase de evaluación y en los métodos de ensemble.
 
-Siguiendo la guía, hemos aplicado tres enfoques diferentes al dataset original:
+\subsection{Support Vector Machine}
 
-\subsubsection{Dataset original}
-El dataset sin transformar se utiliza como línea base para comparar el efecto de las transformaciones.
+Las Máquinas de Vectores de Soporte buscan el hiperplano óptimo que maximiza el margen de separación entre las clases. En problemas multiclase como el presente, donde existen tres especies de iris, el algoritmo emplea internamente una estrategia de uno contra uno, construyendo clasificadores binarios para cada par de clases. La implementación utiliza la configuración por defecto de la librería scikit-learn, que emplea un kernel de función de base radial capaz de capturar fronteras de decisión no lineales.
 
-\subsubsection{Estandarización}
-La estandarización transforma los datos para que tengan media cero y desviación estándar unitaria. Para cada característica $x_i$, la transformación es:
+Una característica relevante de la implementación es la habilitación de la estimación de probabilidades, que permite obtener no solo la clase predicha sino también la confianza del modelo en su predicción. Esta información resulta fundamental para los métodos de ensemble que combinan probabilidades en lugar de votos.
 
-\begin{equation}
-z_i = \frac{x_i - \mu}{\sigma}
-\end{equation}
+\subsection{Random Forest}
 
-donde $\mu$ es la media y $\sigma$ es la desviación estándar de la característica. Para ello, hemos usado la clase \texttt{StandardScaler} de la librería \texttt{sklearn.preprocessing}, como se hizo en el ejemplo proporcionado.
+El algoritmo Random Forest pertenece a la familia de métodos de ensemble y combina múltiples árboles de decisión entrenados sobre subconjuntos aleatorios de los datos y las características. Cada árbol individual proporciona una predicción, y la clase final se determina mediante votación mayoritaria. Esta estrategia de agregación reduce la varianza del modelo y lo hace más robusto frente al sobreajuste que un único árbol de decisión.
 
-Esta técnica es particularmente útil cuando las características tienen diferentes escalas y queremos que todas contribuyan de manera equitativa al análisis.
+La implementación utiliza los parámetros por defecto de la librería, que incluyen cien árboles en el bosque y la selección aleatoria de la raíz cuadrada del número de características en cada división. Estos valores representan un equilibrio razonable entre complejidad computacional y capacidad predictiva.
 
-\subsubsection{Normalización Min-Max}
-La normalización min-max escala los datos al rango [0, 1]:
+\subsection{Naive Bayes}
 
-\begin{equation}
-x'_i = \frac{x_i - x_{min}}{x_{max} - x_{min}}
-\end{equation}
+El clasificador Naive Bayes aplica el teorema de Bayes con la suposición de independencia condicional entre las características. A pesar de que esta suposición raramente se cumple en la práctica, el algoritmo ha demostrado ser efectivo en numerosos problemas de clasificación. La variante gaussiana utilizada asume que los valores de cada característica dentro de cada clase siguen una distribución normal.
 
-Esta transformación es particularmente útil cuando se requiere que todos los valores estén en un rango específico y comparable.
+La principal ventaja de este clasificador reside en su eficiencia computacional y en su capacidad para manejar conjuntos de datos de alta dimensionalidad. Además, proporciona estimaciones de probabilidad bien calibradas que resultan útiles para la combinación mediante técnicas de ensemble.
 
-\subsection{Análisis de Componentes Principales (PCA)}
+\section{Evaluación de los Modelos}
 
-El Análisis de Componentes Principales (PCA) es una técnica de reducción de dimensionalidad que transforma los datos originales en un nuevo sistema de coordenadas donde las nuevas variables (componentes principales) son combinaciones lineales de las variables originales y están ordenadas por la cantidad de varianza que explican.
+El módulo de evaluación implementa un conjunto completo de métricas que permiten caracterizar el rendimiento de los modelos desde múltiples perspectivas. Esta diversidad de métricas resulta especialmente importante en problemas de clasificación multiclase, donde una única medida puede no capturar adecuadamente todos los aspectos relevantes del rendimiento.
 
-Hemos aplicado dos criterios para la selección de componentes:
+\subsection{Métricas de Rendimiento}
 
-\begin{itemize}
-    \item \textbf{PCA 95\%}: Selecciona el número mínimo de componentes necesarios para explicar al menos el 95\% de la varianza total
-    \item \textbf{PCA 80\%}: Selecciona el número mínimo de componentes necesarios para explicar al menos el 80\% de la varianza total
-\end{itemize}
+La exactitud representa la proporción de predicciones correctas sobre el total de muestras, constituyendo la métrica más intuitiva pero también la más susceptible a sesgos cuando las clases están desbalanceadas. En el caso del dataset Iris, donde las clases están perfectamente equilibradas, la exactitud proporciona una medida fiable del rendimiento global.
 
-\subsection{Validación cruzada estratificada}
+La precisión mide la proporción de predicciones positivas que son correctamente clasificadas, mientras que el recall o sensibilidad cuantifica la proporción de instancias positivas que el modelo identifica correctamente. La combinación armónica de ambas métricas da lugar al F1-score, que penaliza los desequilibrios entre precisión y recall y proporciona una medida balanceada del rendimiento.
 
-Hemos implementado una validación cruzada estratificada con k=5 pliegues. Con esta técnica dividimos el conjunto de datos en 5 particiones (folds) de igual tamaño, manteniendo la misma proporción de clases en cada partición (estratificación). En cada iteración, utilizamos 4 particiones para entrenamiento (80\% de los datos) y una para prueba (20\% de los datos). Esto permite utilizar todos los datos tanto para entrenamiento como para evaluación, reduciendo el sesgo en la estimación del rendimiento.
+La especificidad complementa al recall midiendo la capacidad del modelo para identificar correctamente las instancias negativas. Las tasas de falsos positivos y falsos negativos proporcionan información adicional sobre los tipos de errores que comete el modelo, lo cual puede resultar relevante en aplicaciones donde ciertos errores tienen consecuencias más graves que otros.
 
-\section{Resultados}
+\subsection{Curvas ROC y Área bajo la Curva}
 
-\subsection{Transformaciones Aplicadas}
+La curva ROC representa gráficamente la relación entre la tasa de verdaderos positivos y la tasa de falsos positivos para diferentes umbrales de clasificación. El área bajo esta curva proporciona una medida agregada del rendimiento del modelo que es independiente del umbral de decisión seleccionado.
 
-Se han generado 9 conjuntos de datos diferentes a partir del dataset original:
+La implementación realizada genera curvas ROC multiclase utilizando la estrategia uno contra resto, donde cada clase se compara individualmente con el resto de clases. El área bajo la curva macro-promediada proporciona una medida global del rendimiento que trata a todas las clases con igual importancia.
 
-\begin{enumerate}
-    \item Original (sin transformación)
-    \item Estandarizado
-    \item Normalizado
-    \item Original + PCA 95\%
-    \item Original + PCA 80\%
-    \item Estandarizado + PCA 95\%
-    \item Estandarizado + PCA 80\%
-    \item Normalizado + PCA 95\%
-    \item Normalizado + PCA 80\%
-\end{enumerate}
+Las curvas ROC generadas se almacenan como imágenes PNG en el directorio de evaluación, permitiendo una inspección visual del comportamiento de cada modelo en cada iteración de la validación cruzada.
 
-\subsection{Reducción de Dimensionalidad}
+\section{Análisis de Resultados}
 
-Los resultados del análisis PCA muestran:
+El módulo de resultados procesa los archivos de evaluación generados para cada modelo y cada iteración de la validación cruzada, calculando estadísticas agregadas que permiten comparar el rendimiento de los diferentes algoritmos.
 
-\begin{table}[h]
-\centering
-\caption{Número de componentes principales según umbral de varianza}
-\begin{tabular}{lcc}
-\toprule
-Preprocesamiento & PCA 95\% & PCA 80\% \\
-\midrule
-Original & 2 componentes & 1 componente \\
-Estandarizado & 2 componentes & 1 componente \\
-Normalizado & 2 componentes & 1 componente \\
-\bottomrule
-\end{tabular}
-\end{table}
+\subsection{Tablas Resumen por Método}
 
-Nos damos cuenta de que para el umbral del 95\% de varianza explicada, se requieren 2 componentes principales en todos los casos, lo que representa una reducción del 50\% en la dimensionalidad (de 4 a 2 características), mientras que para el umbral del 80\% de varianza explicada, una única componente principal es suficiente, logrando una reducción del 75\% en la dimensionalidad (de 4 a 1 característica).
+Para cada uno de los cuatro métodos de clasificación, se ha generado una tabla resumen que presenta las métricas promediadas sobre los cinco pliegues de la validación cruzada, junto con sus desviaciones estándar. Esta información permite no solo comparar el rendimiento medio de los modelos sino también su estabilidad a través de las diferentes particiones de los datos.
 
-\subsection{Visualización de Preprocesamiento}
+Los resultados obtenidos para el método K-Nearest Neighbors muestran un rendimiento excepcional en el conjunto de datos original, alcanzando una exactitud media del 98.00\% con una desviación estándar de apenas 1.83\%. Este rendimiento se mantiene prácticamente inalterado cuando se aplica PCA con un umbral del 95\% de varianza explicada, lo que sugiere que las componentes principales capturan la información discriminante relevante. Sin embargo, cuando se reduce la varianza explicada al 80\%, el rendimiento disminuye hasta el 92.67\%, evidenciando que una componente principal única no es suficiente para preservar toda la información necesaria para la clasificación óptima.
 
-Las figuras \ref{fig:estandarizado} y \ref{fig:normalizado} nos muestran la distribución de los datos tras aplicar estandarización y normalización respectivamente, utilizando las características de longitud y anchura del sépalo.
+El método Support Vector Machine presenta un comportamiento similar, con una exactitud del 96.67\% en los datos originales y estandarizados. Los resultados son consistentes entre las diferentes transformaciones, aunque el rendimiento disminuye de forma más pronunciada con la reducción dimensional agresiva del PCA al 80\%.
 
-\begin{figure}[htbp]
-\centering
-\includegraphics[width=0.7\textwidth]{images/estandarizado_scatter.png}
-\caption{Conjunto de datos estandarizado. Observamos que las tres clases de iris presentan distribuciones diferenciadas, con \textit{Iris setosa} claramente separada de las otras dos especies. Los datos estandarizados tienen media cero y desviación estándar unitaria, lo que permite una comparación equitativa entre características con diferentes escalas originales.}
-\label{fig:estandarizado}
-\end{figure}
+Random Forest alcanza una exactitud del 96.67\% en los datos originales, comparable al resto de métodos. Su comportamiento ante la reducción dimensional es el menos favorable de los cuatro algoritmos, con una exactitud del 88.67\% cuando se utiliza PCA al 80\% sobre los datos originales.
 
-\begin{figure}[htbp]
-\centering
-\includegraphics[width=0.7\textwidth]{images/normalizado_scatter.png}
-\caption{Conjunto de datos normalizado al rango [0, 1]. La normalización min-max preserva las relaciones entre los puntos y mantiene la estructura de separabilidad entre clases. Esta transformación nos resulta particularmente útil cuando se requiere que todos los valores estén en un rango específico y comparable.}
-\label{fig:normalizado}
-\end{figure}
+Naive Bayes muestra el rendimiento más estable ante las diferentes transformaciones, aunque con valores de exactitud ligeramente inferiores a los otros métodos en la mayoría de configuraciones. Su exactitud media en los datos originales es del 95.33\%, y resulta notable que mantiene un rendimiento del 93.33\% incluso con la reducción dimensional más agresiva.
 
-\subsection{Análisis PCA sobre datos originales}
+\subsection{Comparativa de F1-score}
 
-Las figuras \ref{fig:orig_pca95_violin} a \ref{fig:orig_pca80_violin} muestran los resultados del PCA aplicado directamente sobre los datos originales (sin estandarización ni normalización previa).
+La tabla comparativa de F1-score permite visualizar de forma condensada el rendimiento de todos los métodos en todas las configuraciones de datos. Los valores más altos se observan consistentemente en el método KNN aplicado a los datos originales y con PCA al 95\%, seguido por SVM y Random Forest. Esta jerarquía se invierte en algunas configuraciones con reducción dimensional agresiva, donde Naive Bayes muestra mayor robustez.
 
-\begin{figure}[htbp]
-\centering
-\includegraphics[width=0.7\textwidth]{images/original_pca95_violin.png}
-\caption{Distribución por clase tras aplicar PCA con umbral del 95\% de varianza explicada sobre datos originales. El gráfico de violín nos muestra que una única componente principal es suficiente para capturar el 95\% de la varianza. \textit{Iris setosa} presenta valores consistentemente menores en esta componente, mientras que las otras dos especies muestran mayor solapamiento.}
-\label{fig:orig_pca95_violin}
-\end{figure}
+El análisis de las desviaciones estándar revela que los métodos basados en instancias como KNN presentan mayor variabilidad entre pliegues, mientras que los métodos paramétricos como Naive Bayes tienden a producir resultados más consistentes. Esta observación sugiere que la elección del método óptimo puede depender no solo del rendimiento medio esperado sino también de los requisitos de estabilidad de la aplicación específica.
 
-\begin{figure}[htbp]
-\centering
-\includegraphics[width=0.7\textwidth]{images/original_pca95_scatter.png}
-\caption{Proyección en 2D del espacio de componentes principales (95\% varianza) para datos originales. La primera y segunda componente principal permiten una visualización clara de la separación entre clases, con \textit{Iris setosa} formando un cluster distintivo.}
-\label{fig:orig_pca95_scatter}
-\end{figure}
+\subsection{Visualización de Métricas}
 
-\begin{figure}[htbp]
-\centering
-\includegraphics[width=0.7\textwidth]{images/original_pca80_violin.png}
-\caption{Distribución por clase con PCA al 80\% de varianza sobre datos originales. Con este umbral más bajo, una sola componente es suficiente, logrando la máxima reducción dimensional (de 4 a 1 característica). La separabilidad de \textit{Iris setosa} se mantiene claramente visible.}
-\label{fig:orig_pca80_violin}
-\end{figure}
+Los gráficos de dispersión generados permiten explorar las relaciones entre diferentes pares de métricas. La representación de la tasa de falsos negativos frente a la tasa de falsos positivos revela que la mayoría de los modelos se concentran en valores bajos para ambas métricas, con algunas excepciones en las configuraciones con reducción dimensional extrema.
 
-\subsection{Análisis PCA sobre datos estandarizados}
+La relación entre precisión y recall muestra una correlación positiva fuerte, lo que indica que los modelos que predicen con alta precisión también tienden a identificar correctamente la mayoría de las instancias de cada clase. El gráfico de exactitud frente a F1-score confirma la consistencia entre estas métricas, con puntos distribuidos a lo largo de la diagonal principal.
 
-Las Figuras \ref{fig:std_pca95_violin} a \ref{fig:std_pca80_violin} presentan el análisis PCA aplicado sobre los datos estandarizados, donde cada característica tiene media cero y desviación estándar unitaria.
+\section{Métodos de Ensemble}
 
-\begin{figure}[htbp]
-\centering
-\includegraphics[width=0.7\textwidth]{images/std_pca95_violin.png}
-\caption{Distribución por clase tras PCA (95\% varianza) sobre datos estandarizados. La estandarización previa al PCA asegura que todas las características contribuyan equitativamente al análisis, independientemente de sus escalas originales. Observamos una separación clara entre las tres especies.}
-\label{fig:std_pca95_violin}
-\end{figure}
+Los métodos de ensemble combinan las predicciones de múltiples modelos con el objetivo de obtener un rendimiento superior al de los modelos individuales. Esta mejora se fundamenta en la teoría de que diferentes modelos pueden capturar diferentes aspectos de los datos, y su combinación puede reducir tanto el sesgo como la varianza del sistema global.
 
-\begin{figure}[htbp]
-\centering
-\includegraphics[width=0.7\textwidth]{images/std_pca95_scatter.png}
-\caption{Espacio bidimensional de componentes principales (95\% varianza) para datos estandarizados. La estandarización mejora la visualización al dar igual peso a todas las características, resultando en una proyección más balanceada que captura mejor las diferencias sutiles entre \textit{Iris versicolor} e \textit{Iris virginica}.}
-\label{fig:std_pca95_scatter}
-\end{figure}
+\subsection{Votación}
 
-\begin{figure}[htbp]
-\centering
-\includegraphics[width=0.7\textwidth]{images/std_pca80_violin.png}
-\caption{Distribución por clase con PCA al 80\% de varianza sobre datos estandarizados. Similar a los datos originales, una componente principal es suficiente para este umbral, manteniendo la separabilidad entre clases.}
-\label{fig:std_pca80_violin}
-\end{figure}
+El método de votación implementado asigna a cada muestra la clase que recibe más votos de los cuatro modelos individuales. En caso de empate, el sistema utiliza las probabilidades predichas para desempatar, seleccionando la clase cuya suma de probabilidades entre los modelos empatados sea mayor. Esta estrategia de desempate aprovecha la información adicional proporcionada por las estimaciones de probabilidad, evitando decisiones arbitrarias.
 
-\subsection{Análisis PCA sobre datos normalizados}
+La implementación procesa las predicciones de cada modelo de forma vectorizada, contando los votos para cada muestra mediante la estructura Counter de Python. El manejo de empates requiere un procesamiento adicional que accede a las probabilidades predichas por cada modelo, calculando la suma ponderada para las clases involucradas en el empate.
 
-Las Figuras \ref{fig:norm_pca95_violin} a \ref{fig:norm_pca80_violin} ilustran el comportamiento del PCA cuando se aplica sobre datos normalizados al rango [0, 1].
+\subsection{Combinación por Media}
 
-\begin{figure}[htbp]
-\centering
-\includegraphics[width=0.7\textwidth]{images/norm_pca95_violin.png}
-\caption{Distribución por clase tras PCA (95\% varianza) sobre datos normalizados. La normalización min-max previa al PCA produce resultados similares a la estandarización en términos de separabilidad entre clases, aunque con una escala diferente en el espacio de componentes principales.}
-\label{fig:norm_pca95_violin}
-\end{figure}
+El método de combinación por media calcula el promedio aritmético de las probabilidades predichas por cada modelo para cada clase, asignando la muestra a la clase con mayor probabilidad media. Este enfoque es equivalente a una votación suave donde cada modelo contribuye proporcionalmente a su confianza en la predicción.
 
-\begin{figure}[htbp]
-\centering
-\includegraphics[width=0.7\textwidth]{images/norm_pca95_scatter.png}
-\caption{Proyección 2D del espacio PCA (95\% varianza) para datos normalizados. La estructura de separación entre clases se preserva, con \textit{Iris setosa} claramente diferenciada y las otras dos especies mostrando cierto solapamiento en el espacio reducido.}
-\label{fig:norm_pca95_scatter}
-\end{figure}
+La implementación utiliza operaciones de NumPy para calcular eficientemente la media a lo largo del eje de los modelos. Las probabilidades resultantes se normalizan implícitamente, ya que el promedio de distribuciones de probabilidad es también una distribución de probabilidad.
 
-\begin{figure}[htbp]
-\centering
-\includegraphics[width=0.7\textwidth]{images/norm_pca80_violin.png}
-\caption{Distribución por clase con PCA al 80\% de varianza sobre datos normalizados. Consistente con los otros métodos de preprocesamiento, una componente principal captura suficiente información para este umbral, demostrando la efectividad del PCA en la reducción dimensional del dataset Iris.}
-\label{fig:norm_pca80_violin}
-\end{figure}
+\subsection{Combinación por Mediana}
 
-\subsection{Distribución de los datos}
+El método de mediana es similar al de media, pero utiliza la mediana en lugar del promedio aritmético. Esta variante es más robusta frente a predicciones extremas de modelos individuales, ya que la mediana es menos sensible a valores atípicos que la media.
 
-El análisis visual, a través de gráficos de violín y de dispersión, revela varios patrones relevantes. La clase \textit{Iris setosa} se distingue claramente de las otras dos especies en el espacio de componentes principales, independientemente del método de preprocesamiento aplicado. En cambio, las clases \textit{Iris versicolor} e \textit{Iris virginica} presentan cierto grado de solapamiento, aunque siguen siendo diferenciables en el espacio definido por las dos primeras componentes principales. La primera componente explica la mayor parte de la variabilidad asociada a las medidas de los pétalos, que según la literatura constituyen las variables con mayor poder discriminante. Los gráficos de violín muestran que la distribución de cada clase es relativamente homogénea, siendo \textit{Iris setosa} la que presenta menor variabilidad en la primera componente principal. Tanto la estandarización como la normalización producen resultados cualitativamente similares, aunque la estandarización suele ser más adecuada al emplearse con algoritmos sensibles a la escala, como las máquinas de vectores de soporte (SVM) o las redes neuronales.
+En la práctica, la mediana puede producir resultados diferentes cuando algún modelo tiene predicciones muy confiadas que difieren del consenso. La implementación mantiene la misma estructura que el método de media, sustituyendo únicamente la función de agregación.
 
-\subsection{Archivos generados}
+\section{Resultados de los Métodos Ensemble}
 
-Para cada uno de los 9 conjuntos de datos y para cada una de las 5 iteraciones de validación cruzada, hemos conseguido generar archivos CSV con los conjuntos de entrenamiento y prueba:
+Los tres métodos de ensemble se han evaluado sobre todas las combinaciones de datos y pliegues de validación cruzada, generando archivos de métricas y curvas ROC equivalentes a los de los modelos individuales.
 
-\begin{itemize}
-    \item \texttt{training\{i\}\_\{tipo\}.csv}: Conjunto de entrenamiento para la iteración i (120 muestras)
-    \item \texttt{test\{i\}\_\{tipo\}.csv}: Conjunto de prueba para la iteración i (30 muestras)
-\end{itemize}
+Los resultados del ensemble por votación en los datos originales muestran una exactitud del 96.67\% en la primera iteración de validación cruzada, con un F1-score de 0.9666 y un AUC de 0.99. Estos valores son comparables a los mejores modelos individuales, lo que indica que la combinación no degrada el rendimiento en este caso.
 
-Donde \texttt{\{tipo\}} indica el tipo de transformación aplicada (original, std, norm, original\_PCA95, etc.) e \texttt{\{i\}} va de 1 a 5.
+El ensemble por media produce resultados idénticos al de votación en la primera iteración, lo que sugiere que las predicciones de los modelos individuales son suficientemente consistentes como para que ambos métodos de combinación converjan a las mismas decisiones. Este comportamiento es esperable en un problema de clasificación relativamente sencillo como el dataset Iris.
 
-En total hemos generado 90 archivos CSV (9 conjuntos $\times$ 5 iteraciones $\times$ 2 archivos por iteración).
+El ensemble por mediana también coincide con los otros dos métodos en la primera iteración, confirmando la robustez de las predicciones combinadas. La consistencia entre los tres métodos de ensemble sugiere que los modelos individuales están bien calibrados y sus predicciones son compatibles entre sí.
+
+A través de todas las configuraciones de datos y pliegues de validación, los métodos de ensemble mantienen un rendimiento estable y competitivo con los mejores modelos individuales. La principal ventaja observada es la reducción de la variabilidad entre pliegues, ya que la combinación de modelos tiende a suavizar las predicciones erróneas de modelos individuales en particiones específicas.
 
 \section{Conclusiones}
 
-\subsection{Principales hallazgos}
+El sistema completo de entrenamiento, evaluación y ensemble implementado proporciona una metodología rigurosa para la clasificación del dataset Iris. Los cuatro algoritmos individuales alcanzan rendimientos excelentes en la mayoría de configuraciones, con exactitudes superiores al 90\% en prácticamente todos los casos.
 
-El análisis de componentes principales (PCA) demuestra ser altamente eficaz para el conjunto de datos \textit{Iris}, ya que permite reducir la dimensionalidad de cuatro a dos variables conservando aproximadamente el 95\% de la varianza total, e incluso a una sola componente manteniendo alrededor del 80\% de la información original. 
+El análisis comparativo revela que K-Nearest Neighbors obtiene los mejores resultados en los datos originales y con transformaciones que preservan la mayor parte de la información, mientras que Naive Bayes muestra mayor robustez ante la reducción dimensional agresiva. Support Vector Machine y Random Forest presentan comportamientos intermedios, con rendimientos consistentes en la mayoría de configuraciones.
 
-En cuanto al preprocesamiento, tanto la estandarización como la normalización producen resultados comparables en términos del número de componentes principales necesarias. La elección entre una u otra técnica dependerá principalmente del algoritmo de clasificación que se emplee posteriormente.
+Los métodos de ensemble demuestran su utilidad al proporcionar predicciones estables que combinan las fortalezas de los modelos individuales. Aunque la mejora en términos de rendimiento medio es marginal en este problema particular, la reducción de la variabilidad constituye una ventaja práctica relevante en aplicaciones donde la consistencia de las predicciones es importante.
 
-Respecto a la separabilidad de clases, la especie \textit{Iris setosa} resulta linealmente separable de las otras dos, mientras que \textit{Iris versicolor} e \textit{Iris virginica} presentan cierto solapamiento, lo cual coincide con los hallazgos reportados en la literatura sobre este conjunto de datos.
-
-Finalmente, la aplicación de validación cruzada estratificada asegura que los resultados obtenidos sean robustos y generalizables, manteniendo la proporción de clases en cada partición del conjunto de datos.
-
-
-\subsection{Aplicaciones Prácticas}
-
-Los conjuntos de datos generados están listos para ser utilizados en entrenamiento y evaluación de algoritmos de clasificación supervisada, comparación del rendimiento de modelos con diferentes niveles de reducción dimensional, análisis del trade-off entre complejidad del modelo y precisión, y estudios sobre la importancia de las características en la clasificación.
-
-\subsection{Reflexiones Finales}
-
-Este estudio demuestra la importancia del preprocesamiento y la reducción de dimensionalidad en el análisis de datos. El dataset Iris, aunque es relativamente simple, sirve como un excelente caso de estudio para entender estos conceptos fundamentales en machine learning.
-
-Además, la reducción de dimensionalidad mediante PCA no solo nos ayuda a visualizar mejor los datos y reducir el costo computacional, sino que también puede mejorar el rendimiento de los modelos al eliminar ruido y correlaciones redundantes entre variables.
-
-Por último, podemos añadir que la validación cruzada estratificada implementada asegura que los resultados obtenidos sean confiables y reproducibles, proporcionando una base sólida para futuras investigaciones y aplicaciones prácticas.
+La metodología de validación cruzada estratificada empleada asegura que los resultados reportados sean representativos del rendimiento esperado en datos no vistos, proporcionando estimaciones fiables que pueden guiar la selección del modelo más adecuado para cada aplicación específica.
 
 \begin{thebibliography}{9}
-
-\bibitem{fisher1936}
-Fisher, R. A. (1936).
-\textit{The use of multiple measurements in taxonomic problems}.
-Annals of Eugenics, 7(2), 179-188.
 
 \bibitem{sklearn}
 Pedregosa, F., et al. (2011).
 \textit{Scikit-learn: Machine Learning in Python}.
 Journal of Machine Learning Research, 12, 2825-2830.
 
-\bibitem{pca}
-Jolliffe, I. T. (2002).
-\textit{Principal Component Analysis} (2nd ed.).
-Springer Series in Statistics.
+\bibitem{breiman2001}
+Breiman, L. (2001).
+\textit{Random Forests}.
+Machine Learning, 45(1), 5-32.
+
+\bibitem{cortes1995}
+Cortes, C., \& Vapnik, V. (1995).
+\textit{Support-vector networks}.
+Machine Learning, 20(3), 273-297.
+
+\bibitem{dietterich2000}
+Dietterich, T. G. (2000).
+\textit{Ensemble Methods in Machine Learning}.
+Multiple Classifier Systems, 1-15.
 
 \end{thebibliography}
 
