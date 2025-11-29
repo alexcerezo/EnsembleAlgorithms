@@ -17,42 +17,55 @@
 # 
 # Para ello, usamos una función que se encarga de obtener todas las métricas excepto la curva ROC y el AUC.
 
-# In[29]:
+# In[ ]:
 
 
 import pandas as pd 
 import numpy as np
+from sklearn.metrics import precision_recall_fscore_support, accuracy_score, confusion_matrix
 
 def get_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> pd.DataFrame:
+    precision, recall, f1, _ = precision_recall_fscore_support(
+        y_true, y_pred, average='macro', zero_division=0
+    )
 
-    # Cálculo de los valores de la matriz de confusión
-    TN = np.sum((y_true == 0) & (y_pred == 0))
-    TP = np.sum((y_true == 1) & (y_pred == 1))
-    FN = np.sum((y_true == 1) & (y_pred == 0))
-    FP = np.sum((y_true == 0) & (y_pred == 1))
+    accuracy = accuracy_score(y_true, y_pred)
 
-    # Sensibilidad
-    S = TP / (TP + FN)
-    # Exactitud
-    Acc = (TP + TN) / (TP + FP + FN + TN)
-    # Especificidad
-    SP = TN / (FP + TN)
-    # Recall
-    RC = TP / (TP + FN)
-    # Precisión
-    PR = TP / (TP + FP)
-    # Tasa de falsos negativos
-    FNR = FN / (TP + FN)
-    # Tasa de falsos positivos
-    FPR = FP / (FP + TN)
-    # F1-score
-    Fm = 2 * (PR * RC) / (PR + RC)
-    # Guardamos los resultados en un DataFrame
+    cm = confusion_matrix(y_true, y_pred)
+    n_classes = cm.shape[0]
+
+    sensitivities = []
+    specificities = []
+    fprs = []
+    fnrs = []
+
+    for i in range(n_classes):
+        TP = cm[i, i]
+        FN = cm[i, :].sum() - TP
+        FP = cm[:, i].sum() - TP
+        TN = cm.sum() - (TP + FN + FP)
+
+        sensitivity = TP / (TP + FN) if (TP + FN) > 0 else 0
+        sensitivities.append(sensitivity)
+
+        specificity = TN / (TN + FP) if (TN + FP) > 0 else 0
+        specificities.append(specificity)
+
+        fpr = FP / (FP + TN) if (FP + TN) > 0 else 0
+        fprs.append(fpr)
+
+        fnr = FN / (TP + FN) if (TP + FN) > 0 else 0
+        fnrs.append(fnr)
+
+    avg_sensitivity = np.mean(sensitivities)
+    avg_specificity = np.mean(specificities)
+    avg_fpr = np.mean(fprs)
+    avg_fnr = np.mean(fnrs)
+
     results = pd.DataFrame({
         'metric': ['Sensibilidad', 'Exactitud', 'Especificidad', 'Recall', 'Precisión', 'Tasa de Falsos Negativos', 'Tasa de Falsos Positivos', 'F1-score'],
-        'value': [S, Acc, SP, RC, PR, FNR, FPR, Fm]
+        'value': [avg_sensitivity, accuracy, avg_specificity, recall, precision, avg_fnr, avg_fpr, f1]
     })
-
 
     return results
 
