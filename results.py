@@ -192,3 +192,77 @@ def create_f1_comparison_table():
 f1_comparison = create_f1_comparison_table()
 display(f1_comparison)
 
+
+# ## Figuras Comparativas de Métricas
+# 
+# Gráficos de dispersión comparando diferentes métricas entre sí para todos los métodos y conjuntos de datos.
+
+# In[29]:
+
+
+import matplotlib.pyplot as plt
+
+def create_metric_plots():
+    all_metrics = []
+
+    for method in methods:
+        for norm in norm_types:
+            for pca in pca_variants:
+                dataset_name = f"{norm}{pca}"
+
+                for fold in range(1, 6):
+                    file_pattern = f"cross_validation_evaluation/{method}_{dataset_name}_{fold}.csv"
+                    if os.path.exists(file_pattern):
+                        df = pd.read_csv(file_pattern)
+                        metrics_dict = dict(zip(df['metric'], df['value']))
+                        metrics_dict['method'] = method
+                        metrics_dict['dataset'] = dataset_name
+                        all_metrics.append(metrics_dict)
+
+    df_all = pd.DataFrame(all_metrics)
+    colors = {'KNN': 'blue', 'SVM': 'red', 'RF': 'green', 'NB': 'orange'}
+
+    fig, axes = plt.subplots(4, 3, figsize=(18, 20))
+
+    for idx, method in enumerate(methods):
+        method_data = df_all[df_all['method'] == method]
+
+        if not method_data.empty:
+            # FN contra FP
+            df_grouped = method_data.groupby(['Tasa de Falsos Positivos', 'Tasa de Falsos Negativos']).size().reset_index(name='count')
+            axes[idx, 0].scatter(df_grouped['Tasa de Falsos Positivos'], 
+                               df_grouped['Tasa de Falsos Negativos'],
+                               s=df_grouped['count']*20, alpha=0.6, color=colors[method], edgecolors='black', linewidth=0.5)
+            axes[idx, 0].set_xlabel('Tasa de Falsos Positivos (FP)')
+            axes[idx, 0].set_ylabel('Tasa de Falsos Negativos (FN)')
+            axes[idx, 0].set_title(f'{method}: FN vs FP (n={len(method_data)})')
+            axes[idx, 0].grid(True, alpha=0.3)
+
+            # PR contra RC
+            df_grouped = method_data.groupby(['Recall', 'Precisión']).size().reset_index(name='count')
+            axes[idx, 1].scatter(df_grouped['Recall'], 
+                               df_grouped['Precisión'],
+                               s=df_grouped['count']*20, alpha=0.6, color=colors[method], edgecolors='black', linewidth=0.5)
+            axes[idx, 1].set_xlabel('Recall (RC)')
+            axes[idx, 1].set_ylabel('Precisión (PR)')
+            axes[idx, 1].set_title(f'{method}: PR vs RC (n={len(method_data)})')
+            axes[idx, 1].grid(True, alpha=0.3)
+
+            # ACC contra Fm
+            df_grouped = method_data.groupby(['F1-score', 'Exactitud']).size().reset_index(name='count')
+            axes[idx, 2].scatter(df_grouped['F1-score'], 
+                               df_grouped['Exactitud'],
+                               s=df_grouped['count']*20, alpha=0.6, color=colors[method], edgecolors='black', linewidth=0.5)
+            axes[idx, 2].set_xlabel('F1-score (Fm)')
+            axes[idx, 2].set_ylabel('Exactitud (ACC)')
+            axes[idx, 2].set_title(f'{method}: ACC vs Fm (n={len(method_data)})')
+            axes[idx, 2].grid(True, alpha=0.3)
+
+    plt.tight_layout()
+    plt.savefig('cross_validation_results/metric_comparisons.png', dpi=300, bbox_inches='tight')
+    plt.show()
+
+    return df_all
+
+df_metrics = create_metric_plots()
+
