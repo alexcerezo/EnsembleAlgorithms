@@ -2,16 +2,16 @@
 # coding: utf-8
 
 # # Ensemble Methods
-# 
+#
 # Este notebook implementa diferentes métodos de ensemble para combinar las predicciones de múltiples modelos de machine learning y mejorar el rendimiento predictivo.
-# 
+#
 # Los métodos implementados son:
 # 1. Votación (Voting): La clase predicha es la que obtiene más votos de los modelos individuales
 # 2. Media (Mean): Combina las probabilidades predichas usando la media
 # 3. Mediana (Median): Combina las probabilidades predichas usando la mediana
 
 # ## 1. Método de Votación (Voting Ensemble)
-# 
+#
 # El método de votación combina las predicciones de múltiples modelos mediante un sistema de votos. La clase que recibe más votos es seleccionada como la predicción final del ensemble.
 
 # In[4]:
@@ -20,7 +20,10 @@
 import numpy as np
 from collections import Counter
 
-def voting_ensemble(predictions_list: list, probabilities_list: list = None) -> np.ndarray:
+
+def voting_ensemble(
+    predictions_list: list, probabilities_list: list = None
+) -> np.ndarray:
 
     # Convertir todas las predicciones a arrays numpy
     predictions_array = np.array(predictions_list)  # shape: (n_models, n_samples)
@@ -93,7 +96,7 @@ def median_ensemble(probabilities_list: list) -> tuple:
 
 
 # ## Prueba del Ensemble con Modelos Pre-entrenados
-# 
+#
 # A continuación, probamos el método de votación con los modelos reales que ya han sido entrenados, sin necesidad de reentrenarlos.
 
 # In[8]:
@@ -103,52 +106,91 @@ import joblib
 import pandas as pd
 import os
 import sys
+import argparse
 
 from eval import evaluate_model
 
 transformations = ["norm", "original", "std"]
 PCA_values = [0, 80, 95]
 
-for iteration in range(1, 6):
-    for transform in transformations:
-        for pca_value in PCA_values:
 
-            if pca_value > 0:
-                test_file = f"cross_validation_data/test{iteration}_{transform}_PCA{pca_value}.csv"
-                model_suffix = f"{transform}_PCA{pca_value}_{iteration}"
-            else:
-                test_file = f"cross_validation_data/test{iteration}_{transform}.csv"
-                model_suffix = f"{transform}_{iteration}"
+def parse_args():
+    parser = argparse.ArgumentParser(
+        description="Run ensemble evaluation from saved models"
+    )
+    parser.add_argument(
+        "--show-plots",
+        action="store_true",
+        help="Show interactive plots during processing",
+    )
+    return parser.parse_args()
 
-            df_test = pd.read_csv(test_file)
-            X_test = df_test.iloc[:, :-1].astype(float)
-            y_test = df_test.iloc[:, -1].astype(int).to_numpy()
 
-            predictions_list = []
-            probabilities_list = []
+def main(show_plots: bool = False):
+    for iteration in range(1, 6):
+        for transform in transformations:
+            for pca_value in PCA_values:
 
-            model_types = ['KNN', 'SVM', 'RF', 'NB']
-            models_loaded = 0
+                if pca_value > 0:
+                    test_file = f"cross_validation_data/test{iteration}_{transform}_PCA{pca_value}.csv"
+                    model_suffix = f"{transform}_PCA{pca_value}_{iteration}"
+                else:
+                    test_file = f"cross_validation_data/test{iteration}_{transform}.csv"
+                    model_suffix = f"{transform}_{iteration}"
 
-            for model_type in model_types:
-                model_path = f"cross_validation_models/{model_type}_{model_suffix}.pkl"
+                df_test = pd.read_csv(test_file)
+                X_test = df_test.iloc[:, :-1].astype(float)
+                y_test = df_test.iloc[:, -1].astype(int).to_numpy()
 
-                model = joblib.load(model_path)
+                predictions_list = []
+                probabilities_list = []
 
-                y_pred = model.predict(X_test)
-                y_prob = model.predict_proba(X_test)
+                model_types = ["KNN", "SVM", "RF", "NB"]
+                models_loaded = 0
 
-                predictions_list.append(y_pred)
-                probabilities_list.append(y_prob)
-                models_loaded += 1
+                for model_type in model_types:
+                    model_path = (
+                        f"cross_validation_models/{model_type}_{model_suffix}.pkl"
+                    )
 
-            y_pred_voting = voting_ensemble(predictions_list, probabilities_list)
-            y_prob_voting = np.mean(probabilities_list, axis=0)
-            evaluate_model(y_test, y_pred_voting, y_prob_voting, f"VotingEnsemble_{model_suffix}")
+                    model = joblib.load(model_path)
 
-            y_pred_mean, y_prob_mean = mean_ensemble(probabilities_list)
-            evaluate_model(y_test, y_pred_mean, y_prob_mean, f"MeanEnsemble_{model_suffix}")
+                    y_pred = model.predict(X_test)
+                    y_prob = model.predict_proba(X_test)
 
-            y_pred_median, y_prob_median = median_ensemble(probabilities_list)
-            evaluate_model(y_test, y_pred_median, y_prob_median, f"MedianEnsemble_{model_suffix}")
+                    predictions_list.append(y_pred)
+                    probabilities_list.append(y_prob)
+                    models_loaded += 1
 
+                y_pred_voting = voting_ensemble(predictions_list, probabilities_list)
+                y_prob_voting = np.mean(probabilities_list, axis=0)
+                evaluate_model(
+                    y_test,
+                    y_pred_voting,
+                    y_prob_voting,
+                    f"VotingEnsemble_{model_suffix}",
+                    show=show_plots,
+                )
+
+                y_pred_mean, y_prob_mean = mean_ensemble(probabilities_list)
+                evaluate_model(
+                    y_test,
+                    y_pred_mean,
+                    y_prob_mean,
+                    f"MeanEnsemble_{model_suffix}",
+                    show=show_plots,
+                )
+
+                y_pred_median, y_prob_median = median_ensemble(probabilities_list)
+                evaluate_model(
+                    y_test,
+                    y_pred_median,
+                    y_prob_median,
+                    f"MedianEnsemble_{model_suffix}",
+                    show=show_plots,
+                )
+
+
+if __name__ == "__main__":
+    args = parse_args()
+    main(show_plots=args.show_plots)

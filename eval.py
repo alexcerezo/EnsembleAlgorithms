@@ -2,8 +2,8 @@
 # coding: utf-8
 
 # # Evaluación de los modelos
-# 
-# Evaluamos los modelos con las diferentes métricas mencionadas en la práctica: 
+#
+# Evaluamos los modelos con las diferentes métricas mencionadas en la práctica:
 # | Métrica | Definición |
 # |---|---|
 # | F1-score (Fm) | Fm = 2 × (PR × RC) / (PR + RC) |
@@ -14,19 +14,24 @@
 # | Precisión (PR) | PR = TP / (TP + FP) |
 # | Tasa de falsos negativos (FNR) | FNR = FN / (TP + FN) |
 # | Tasa de falsos positivos (FPR) | FPR = FP / (FP + TN) |
-# 
+#
 # Para ello, usamos una función que se encarga de obtener todas las métricas excepto la curva ROC y el AUC.
 
 # In[ ]:
 
 
-import pandas as pd 
+import pandas as pd
 import numpy as np
-from sklearn.metrics import precision_recall_fscore_support, accuracy_score, confusion_matrix
+from sklearn.metrics import (
+    precision_recall_fscore_support,
+    accuracy_score,
+    confusion_matrix,
+)
+
 
 def get_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> pd.DataFrame:
     precision, recall, f1, _ = precision_recall_fscore_support(
-        y_true, y_pred, average='macro', zero_division=0
+        y_true, y_pred, average="macro", zero_division=0
     )
 
     accuracy = accuracy_score(y_true, y_pred)
@@ -62,10 +67,30 @@ def get_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> pd.DataFrame:
     avg_fpr = np.mean(fprs)
     avg_fnr = np.mean(fnrs)
 
-    results = pd.DataFrame({
-        'metric': ['Sensibilidad', 'Exactitud', 'Especificidad', 'Recall', 'Precisión', 'Tasa de Falsos Negativos', 'Tasa de Falsos Positivos', 'F1-score'],
-        'value': [avg_sensitivity, accuracy, avg_specificity, recall, precision, avg_fnr, avg_fpr, f1]
-    })
+    results = pd.DataFrame(
+        {
+            "metric": [
+                "Sensibilidad",
+                "Exactitud",
+                "Especificidad",
+                "Recall",
+                "Precisión",
+                "Tasa de Falsos Negativos",
+                "Tasa de Falsos Positivos",
+                "F1-score",
+            ],
+            "value": [
+                avg_sensitivity,
+                accuracy,
+                avg_specificity,
+                recall,
+                precision,
+                avg_fnr,
+                avg_fpr,
+                f1,
+            ],
+        }
+    )
 
     return results
 
@@ -80,8 +105,12 @@ from sklearn.preprocessing import label_binarize
 import matplotlib.pyplot as plt
 import numpy as np
 import os
+from typing import Optional
 
-def get_roc_curve(y_true: np.ndarray, y_prob: np.ndarray, name: str) -> float:
+
+def get_roc_curve(
+    y_true: np.ndarray, y_prob: np.ndarray, name: str, show: Optional[bool] = False
+) -> float:
     # Obtenemos el número de clases
     n_classes = len(np.unique(y_true))
 
@@ -103,24 +132,38 @@ def get_roc_curve(y_true: np.ndarray, y_prob: np.ndarray, name: str) -> float:
 
     # Graficar curvas ROC para cada clase
     plt.figure(figsize=(10, 8))
-    colors = ['blue', 'red', 'green', 'orange', 'purple', 'brown']
+    colors = ["blue", "red", "green", "orange", "purple", "brown"]
 
     for i in range(n_classes):
-        plt.plot(fpr[i], tpr[i], color=colors[i % len(colors)], lw=2,
-            label=f'Clase {classes[i]} (AUC = {roc_auc[i]:.4f})')
+        plt.plot(
+            fpr[i],
+            tpr[i],
+            color=colors[i % len(colors)],
+            lw=2,
+            label=f"Clase {classes[i]} (AUC = {roc_auc[i]:.4f})",
+        )
 
-    plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--', 
-        label='Clasificador aleatorio')
+    plt.plot(
+        [0, 1],
+        [0, 1],
+        color="navy",
+        lw=2,
+        linestyle="--",
+        label="Clasificador aleatorio",
+    )
     plt.xlim([0.0, 1.0])
     plt.ylim([0.0, 1.05])
-    plt.xlabel('Tasa de Falsos Positivos (FPR)')
-    plt.ylabel('Tasa de Verdaderos Positivos (TPR)')
-    plt.title(f'Curva ROC Multiclase (Macro-AUC = {macro_roc_auc:.4f})')
+    plt.xlabel("Tasa de Falsos Positivos (FPR)")
+    plt.ylabel("Tasa de Verdaderos Positivos (TPR)")
+    plt.title(f"Curva ROC Multiclase (Macro-AUC = {macro_roc_auc:.4f})")
     plt.legend(loc="lower right")
     plt.grid(True)
-    plt.savefig(f'cross_validation_evaluation/{name}.png')
-    plt.show()
-    plt.close()
+    plt.savefig(f"cross_validation_evaluation/{name}.png")
+    # Default behaviour: do not show by default; caller can set show=True
+    if show:
+        plt.show()
+    else:
+        plt.close()
 
     roc_auc = macro_roc_auc
 
@@ -132,18 +175,20 @@ def get_roc_curve(y_true: np.ndarray, y_prob: np.ndarray, name: str) -> float:
 # In[ ]:
 
 
-def evaluate_model(y_true: np.ndarray, y_pred: np.ndarray, y_prob: np.ndarray, name: str) -> pd.DataFrame:
+def evaluate_model(
+    y_true: np.ndarray,
+    y_pred: np.ndarray,
+    y_prob: np.ndarray,
+    name: str,
+    show: Optional[bool] = False,
+) -> pd.DataFrame:
     metrics_df = get_metrics(y_true, y_pred)
-    roc_auc = get_roc_curve(y_true, y_prob, name)
+    roc_auc = get_roc_curve(y_true, y_prob, name, show=show)
 
     # Añadir AUC al DataFrame de métricas
-    auc_df = pd.DataFrame({
-        'metric': ['AUC'],
-        'value': [roc_auc]
-    })
+    auc_df = pd.DataFrame({"metric": ["AUC"], "value": [roc_auc]})
 
     final_results = pd.concat([metrics_df, auc_df], ignore_index=True)
-    final_results.to_csv(f'cross_validation_evaluation/{name}.csv', index=False)
+    final_results.to_csv(f"cross_validation_evaluation/{name}.csv", index=False)
 
     return final_results
-
